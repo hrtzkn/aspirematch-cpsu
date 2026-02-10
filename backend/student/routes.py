@@ -158,21 +158,30 @@ def generate_otp():
     return str(random.randint(100000, 999999))
 
 def send_otp_email(email, otp):
+    EMAIL_USER = os.getenv("EMAIL_USER")
+    EMAIL_PASS = os.getenv("EMAIL_PASS")
+
+    if not EMAIL_USER or not EMAIL_PASS:
+        current_app.logger.error("Email credentials not set")
+        return False
+
     msg = EmailMessage()
     msg["Subject"] = "Your AspireMatch Login OTP"
-    msg["From"] = "aspirematch2@gmail.com"
+    msg["From"] = EMAIL_USER
     msg["To"] = email
-    msg.set_content(f"""
-Your One-Time Password (OTP) is:
+    msg.set_content(
+        f"Your One-Time Password (OTP) is:\n\n{otp}\n\nThis code will expire in 5 minutes."
+    )
 
-{otp}
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+            server.login(EMAIL_USER, EMAIL_PASS)
+            server.send_message(msg)
+        return True
 
-This code will expire in 5 minutes.
-""")
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login("aspirematch2@gmail.com", "bvti ptud ebch pmee")
-        server.send_message(msg)
+    except Exception as e:
+        current_app.logger.error(f"OTP email failed: {e}")
+        return False
 
 @student_bp.route("/test-db")
 def test_db():
@@ -219,7 +228,18 @@ def studentlogin():
             session["otp_email"] = email
             session["otp_time"] = time.time()
 
-            send_otp_email(email, otp)
+            sent = send_otp_email(email, otp)
+
+            if not sent:
+                error = "Unable to send OTP. Please try again later."
+                return render_template(
+                    "student/studentLogin.html",
+                    error=error,
+                    exam_error=False,
+                    email_error=False,
+                    exam_id=exam_id,
+                    email=email
+                )
 
             cur.close()
             conn.close()
@@ -289,29 +309,10 @@ def verify():
             session["student_id"] = student[0]
             session["exam_id"] = exam_id
 
-            cur.execute("""
-                SELECT preferred_program, pair1, pair2, pair3, pair4, pair5,
-                       pair6, pair7, pair8, pair9, pair10,
-                       pair11, pair12, pair13, pair14, pair15,
-                       pair16, pair17, pair18, pair19, pair20,
-                       pair21, pair22, pair23, pair24, pair25,
-                       pair26, pair27, pair28, pair29, pair30,
-                       pair31, pair32, pair33, pair34, pair35,
-                       pair36, pair37, pair38, pair39, pair40,
-                       pair41, pair42, pair43, pair44, pair45,
-                       pair46, pair47, pair48, pair49, pair50,
-                       pair51, pair52, pair53, pair54, pair55,
-                       pair56, pair57, pair58, pair59, pair60,
-                       pair61, pair62, pair63, pair64, pair65,
-                       pair66, pair67, pair68, pair69, pair70,
-                       pair71, pair72, pair73, pair74, pair75,
-                       pair76, pair77, pair78, pair79, pair80,
-                       pair81, pair82, pair83, pair84, pair85,
-                       pair86
-                FROM student_survey_answer
-                WHERE exam_id = %s AND student_id = %s
-            """, (exam_id, session["student_id"]))
-
+            cur.execute(
+                "SELECT 1 FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
+                (exam_id, session["student_id"])
+            )
             survey_row = cur.fetchone()
 
             session.pop("otp", None)

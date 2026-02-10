@@ -128,46 +128,65 @@ def format_ai_explanation_for_pdf(text):
 def get_client_ip():
     return request.headers.get("X-Forwarded-For", request.remote_addr)
 
-def send_security_alert(ip, username):
+def send_email(subject, to_email, body):
+    EMAIL_USER = os.getenv("EMAIL_USER")
+    EMAIL_PASS = os.getenv("EMAIL_PASS")
+
+    if not EMAIL_USER or not EMAIL_PASS:
+        current_app.logger.error("Email credentials not configured")
+        return False
+
     msg = EmailMessage()
-    msg["Subject"] = "⚠️ Admin Login Alert"
-    msg["From"] = "aspirematch2@gmail.com"
-    msg["To"] = "hertzkin@gmail.com"
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_USER
+    msg["To"] = to_email
+    msg.set_content(body)
 
-    msg.set_content(f"""
-    Suspicious admin login detected.
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+            server.login(EMAIL_USER, EMAIL_PASS)
+            server.send_message(msg)
+        return True
 
-    Username: {username}
-    IP Address: {ip}
-    Time: {datetime.now(timezone.utc)}
-    """)
+    except Exception as e:
+        current_app.logger.error(f"Email send failed: {e}")
+        return False
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login("aspirematch2@gmail.com", "bvti ptud ebch pmee")
-        smtp.send_message(msg)
+def send_security_alert(ip, username):
+    body = f"""
+Suspicious admin login detected.
+
+Username: {username}
+IP Address: {ip}
+Time: {datetime.now(timezone.utc)}
+"""
+    return send_email(
+        subject="⚠️ Admin Login Alert",
+        to_email=os.getenv("SECURITY_ALERT_EMAIL", "hertzkin@gmail.com"),
+        body=body
+    )
 
 def generate_otp():
     """Generate a 6-digit OTP as a string."""
     return str(random.randint(100000, 999999))
 
 
-def send_otp_email(email, otp):
-    """Send OTP email to admin."""
-    msg = EmailMessage()
-    msg["Subject"] = "AspireMatch Admin OTP"
-    msg["From"] = "aspirematch2@gmail.com"
-    msg["To"] = email
-    msg.set_content(f"""
-Your One-Time Password (OTP) for AspireMatch Admin login is:
+def send_otp_email(email, otp, is_admin=True):
+    role = "Admin" if is_admin else "User"
+
+    body = f"""
+Your One-Time Password (OTP) for AspireMatch {role} login is:
 
 {otp}
 
-This OTP will expire in 5 minutes.
-""")
+This code will expire in 5 minutes.
+"""
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login("aspirematch2@gmail.com", "bvti ptud ebch pmee")
-        server.send_message(msg)
+    return send_email(
+        subject=f"AspireMatch {role} OTP",
+        to_email=email,
+        body=body
+    )
 
 @admin_bp.route("/test-db")
 def test_db():
@@ -310,7 +329,12 @@ def forgot_password():
             session["admin_otp_time"] = time.time()
             session["is_super_admin"] = is_super_admin
 
-            send_otp_email(email, otp)
+            sent = send_otp_email(email, otp)
+
+            if not sent:
+                error = "Unable to send OTP. Please try again later."
+                return render_template("admin/adminForgotPassword.html", error=error)
+            
             success = "OTP has been sent to your email."
 
             return redirect(url_for("admin.verify_reset_otp"))
@@ -374,7 +398,12 @@ def verify_reset_otp():
                     session["admin_otp"] = otp
                     session["admin_otp_time"] = time.time()
 
-                    send_otp_email(session["admin_otp_email"], otp)
+                    sent = send_otp_email(session["admin_otp_email"], otp)
+
+                    if not sent:
+                        error = "Unable to send OTP. Please try again later."
+                        return render_template("admin/adminForgotPassword.html", error=error)
+                        
                     success = "A new OTP has been sent to your email."
 
             return render_template(
@@ -797,7 +826,11 @@ def addAdmin():
         session["new_admin_otp_time"] = time.time()
         session["new_admin_email"] = email
 
-        send_otp_email(email, otp)
+        sent = send_otp_email(email, otp)
+
+        if not sent:
+            error = "Unable to send OTP. Please try again later."
+            return render_template("admin/adminForgotPassword.html", error=error)
 
         return redirect(url_for("admin.verify_new_admin"))
 
@@ -950,7 +983,11 @@ def verify_new_admin():
                 otp = generate_otp()
                 session["new_admin_otp"] = otp
                 session["new_admin_otp_time"] = time.time()
-                send_otp_email(session["new_admin_email"], otp)
+                sent = send_otp_email(session["new_admin_email"], otp)
+
+                if not sent:
+                    error = "Unable to send OTP. Please try again later."
+                    return render_template("admin/adminForgotPassword.html", error=error)
                 success = "A new OTP has been sent."
 
         if action == "verify":
@@ -3106,7 +3143,11 @@ def adminProfile():
                 "attempts": 0
             }
 
-            send_otp_email(new_email, otp)
+            sent = send_otp_email(new_email, otp)
+
+            if not sent:
+                error = "Unable to send OTP. Please try again later."
+                return render_template("admin/adminForgotPassword.html", error=error)
 
             flash("Verification code sent to new email.", "info")
             cur.close()
@@ -3191,7 +3232,11 @@ def resend_email_otp():
     session["email_change"]["attempts"] = 0
 
     send_otp_email(session["email_change"]["new_email"], otp)
+    sent = send_otp_email(session["email_change"]["new_email"], otp)
 
+    if not sent:
+        error = "Unable to send OTP. Please try again later."
+        return render_template("admin/adminForgotPassword.html", error=error)
     flash("A new verification code has been sent.", "info")
     return redirect(url_for("admin.verify_email_change"))
 
