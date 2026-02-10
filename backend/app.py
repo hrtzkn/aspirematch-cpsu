@@ -14,8 +14,6 @@ app = Flask(
 )
 app.secret_key = os.getenv("SECRET_KEY")
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=10)
-
-# Upload folder for all blueprints
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -23,10 +21,8 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 @app.before_request
 def check_session_timeout():
-    # Only protect admin routes
     if request.blueprint == "admin":
 
-        # Skip timeout check for login page
         if request.endpoint == "admin.login":
             return
 
@@ -42,14 +38,12 @@ def check_session_timeout():
 
             if idle_time > timeout:
                 flash("Session expired due to inactivity.", "session_expired")
-                # Clear only login-related keys
                 session.pop("admin_username", None)
                 session.pop("last_activity", None)
                 session.pop("admin_login_attempts", None)
                 session.pop("admin_lock_until", None)
                 return redirect(url_for("admin.login"))
 
-        # Update activity timestamp
         session["last_activity"] = now
         session.permanent = True
 
@@ -57,10 +51,11 @@ def check_session_timeout():
 from .admin.routes import admin_bp
 from .student.routes import student_bp
 
-# Register Blueprints
+# Blueprints
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(student_bp, url_prefix='/student')
 
 if __name__ == "__main__":
     app.run()
+    #app.run(host="127.0.0.1", port=5002, debug=True)
     #python -m backend.app  

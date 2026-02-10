@@ -104,7 +104,6 @@ def format_ai_explanation_for_pdf(text):
             f'<div class="ai-subtitle">{title}</div>'
         )
 
-    # Convert bullet points into list items
     lines = formatted.split("\n")
     html_lines = []
     in_list = False
@@ -191,7 +190,6 @@ def login():
     session.setdefault("admin_login_attempts", 0)
     session.setdefault("admin_lock_until", None)
 
-    # Check lockout
     if session["admin_lock_until"]:
         if datetime.now(timezone.utc) < session["admin_lock_until"]:
             remaining = int(
@@ -200,7 +198,6 @@ def login():
             error = f"Account locked. Try again in {remaining} minutes."
             return render_template("admin/adminLogin.html", error=error)
         else:
-            # Unlock
             session["admin_login_attempts"] = 0
             session["admin_lock_until"] = None
 
@@ -221,12 +218,11 @@ def login():
             user_type = "admin"
             campus = user["campus"]
         else:
-            # Check super_admin table
             cur.execute("SELECT * FROM super_admin WHERE username = %s", (username,))
             user = cur.fetchone()
             if user:
                 user_type = "super_admin"
-                campus = user.get("campus", "ALL")  # fallback to ALL if not set
+                campus = user.get("campus", "ALL")
 
         cur.close()
         conn.close()
@@ -243,7 +239,6 @@ def login():
 
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
 
-        # Track IP in database
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
@@ -296,7 +291,6 @@ def forgot_password():
         if admin:
             is_super_admin = True
         else:
-            # 🔒 CHECK SUB ADMIN
             cur.execute(
                 "SELECT id FROM admin WHERE email = %s",
                 (email,)
@@ -365,7 +359,6 @@ def verify_reset_otp():
 
         action = request.form.get("action")
 
-        # 🔁 RESEND OTP
         if action == "resend":
             if "admin_otp_email" not in session:
                 error = "Session expired. Please restart password reset."
@@ -388,7 +381,7 @@ def verify_reset_otp():
                 "admin/adminVerifyOtp.html",
                 error=error,
                 success=success,
-                remaining=remaining   # ✅ PASS IT
+                remaining=remaining
             )
 
         if action == "verify":
@@ -475,7 +468,6 @@ def dashboard():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get logged-in admin info
     cur.execute(
         "SELECT fullname, campus FROM admin WHERE username = %s;",
         (session["admin_username"],)
@@ -485,7 +477,6 @@ def dashboard():
     if admin_row:
         fullname, admin_campus = admin_row
     else:
-        # Check super_admin table
         cur.execute(
             "SELECT fullname, campus FROM super_admin WHERE username = %s;",
             (session["admin_username"],)
@@ -494,7 +485,6 @@ def dashboard():
         if admin_row:
             fullname, admin_campus = admin_row
         else:
-            # User not found in either table
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
@@ -539,7 +529,6 @@ def dashboard():
     cur.execute(student_query, tuple(params))
     searched_students = cur.fetchall()
 
-    # Total students
     total_query = """
         SELECT COUNT(*)
         FROM student
@@ -554,7 +543,6 @@ def dashboard():
     cur.execute(total_query, tuple(params))
     total_students = cur.fetchone()[0]
 
-    # Pending students
     pending_query = """
         SELECT COUNT(*)
         FROM student s
@@ -594,7 +582,6 @@ def dashboard():
     """
     params = []
 
-    # 🔒 campus filter (same logic as students)
     if selected_campus:
         admin_query += " WHERE a.campus = %s"
         params.append(selected_campus)
@@ -642,14 +629,12 @@ def edit_student():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get admin campus
     cur.execute(
         "SELECT campus FROM admin WHERE username = %s;",
         (admin_username,)
     )
     admin_campus = cur.fetchone()[0]
 
-    # 🔹 Get OLD student data
     cur.execute("""
         SELECT fullname, gender, email
         FROM student
@@ -657,7 +642,6 @@ def edit_student():
     """, (student_id,))
     old_fullname, old_gender, old_email = cur.fetchone()
 
-    # 🔹 Update student
     cur.execute("""
         UPDATE student
         SET fullname = %s,
@@ -666,7 +650,6 @@ def edit_student():
         WHERE id = %s;
     """, (new_fullname, new_gender, new_email, student_id))
 
-    # 🔹 Insert logs ONLY for changed fields
     if old_fullname != new_fullname:
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
@@ -714,14 +697,12 @@ def delete_student():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get admin campus
     cur.execute(
         "SELECT campus FROM admin WHERE username = %s;",
         (admin_username,)
     )
     admin_campus = cur.fetchone()[0]
 
-    # Get student fullname BEFORE delete
     cur.execute(
         "SELECT fullname FROM student WHERE id = %s;",
         (student_id,)
@@ -734,13 +715,11 @@ def delete_student():
 
     student_fullname = student_row[0]
 
-    # DELETE student → cascade will remove all related records
     cur.execute(
         "DELETE FROM student WHERE id = %s;",
         (student_id,)
     )
 
-    # Log the delete action
     cur.execute("""
         INSERT INTO admin_logs (admin_username, campus, action)
         VALUES (%s, %s, %s);
@@ -813,13 +792,11 @@ def addAdmin():
             "password": hashed_pw
         }
 
-        # 🔢 GENERATE OTP
         otp = generate_otp()
         session["new_admin_otp"] = otp
         session["new_admin_otp_time"] = time.time()
         session["new_admin_email"] = email
 
-        # 📧 SEND OTP
         send_otp_email(email, otp)
 
         return redirect(url_for("admin.verify_new_admin"))
@@ -894,7 +871,6 @@ def delete_admin():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 🔹 Get admin to be deleted
     cur.execute("""
         SELECT id, fullname, username, email, campus
         FROM admin
@@ -909,13 +885,11 @@ def delete_admin():
 
     admin_id, fullname, username, email, campus = admin_row
 
-    # ❌ Prevent deleting self
     if username == deleter:
         cur.close()
         conn.close()
         return redirect(url_for("admin.addAdmin"))
 
-    # 🔹 Get NEW admin username (for logs)
     cur.execute("""
         SELECT username
         FROM admin
@@ -923,14 +897,12 @@ def delete_admin():
     """, (new_admin_id,))
     new_admin_username = cur.fetchone()[0]
 
-    # 🔁 Reassign students
     cur.execute("""
         UPDATE student
         SET added_by = %s
         WHERE added_by = %s
     """, (new_admin_id, admin_id))
 
-    # 🗃 Save deleted admin snapshot
     cur.execute("""
         INSERT INTO deleted_admin
         (id, fullname, username, email, campus, deleted_by)
@@ -939,10 +911,8 @@ def delete_admin():
         admin_id, fullname, username, email, campus, deleter
     ))
 
-    # ❌ Delete admin
     cur.execute("DELETE FROM admin WHERE id = %s", (admin_id,))
 
-    # 🧾 Admin logs (UPDATED MESSAGE)
     cur.execute("""
         INSERT INTO admin_logs (admin_username, campus, action)
         VALUES (%s, %s, %s)
@@ -970,7 +940,6 @@ def verify_new_admin():
     if request.method == "POST":
         action = request.form.get("action")
 
-        # 🔁 RESEND OTP
         if action == "resend":
             elapsed = int(time.time() - session.get("new_admin_otp_time", 0))
 
@@ -984,7 +953,6 @@ def verify_new_admin():
                 send_otp_email(session["new_admin_email"], otp)
                 success = "A new OTP has been sent."
 
-        # ✅ VERIFY OTP
         if action == "verify":
             user_otp = request.form.get("otp", "").strip()
 
@@ -995,7 +963,6 @@ def verify_new_admin():
             elif user_otp != session["new_admin_otp"]:
                 error = "Invalid OTP."
             else:
-                # 🎉 CREATE ADMIN ACCOUNT
                 data = session["new_admin_data"]
 
                 conn = get_db_connection()
@@ -1025,7 +992,6 @@ def verify_new_admin():
                 cur.close()
                 conn.close()
 
-                # 🧹 CLEAN SESSION
                 session.pop("new_admin_data", None)
                 session.pop("new_admin_otp", None)
                 session.pop("new_admin_otp_time", None)
@@ -1087,7 +1053,6 @@ def editAdmin():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # ✅ ADDED: Get old data for comparison
         cur.execute("""
             SELECT fullname, username, email, campus
             FROM admin
@@ -1100,7 +1065,6 @@ def editAdmin():
 
         old_fullname, old_username, old_email, old_campus = old
 
-        # ✅ ADDED: Detect changes
         changes = []
 
         if fullname != old_fullname:
@@ -1118,20 +1082,17 @@ def editAdmin():
         if not changes:
             return jsonify(success=False, message="No changes detected")
 
-        # Update admin
         cur.execute("""
             UPDATE admin
             SET fullname=%s, username=%s, email=%s, campus=%s
             WHERE id=%s
         """, (fullname, username, email, campus, admin_id))
 
-        # Get editor campus for logs
         cur.execute("""
             SELECT campus FROM admin WHERE username = %s
         """, (session["admin_username"],))
         admin_campus = cur.fetchone()[0]
 
-        # ✅ CHANGED: Smart log message
         action = f"Edited admin '{old_username}': " + ", ".join(changes)
 
         cur.execute("""
@@ -1226,18 +1187,15 @@ def addProgramColor():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Get admin campus
         cur.execute("SELECT campus FROM admin WHERE username = %s", (admin_username,))
         admin_campus = cur.fetchone()[0]
 
-        # Update program color
         cur.execute("""
             UPDATE program
             SET color = %s
             WHERE program_name = %s
         """, (color, program_name))
 
-        # Log the action
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s)
@@ -1267,11 +1225,9 @@ def program():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    # check if admin exists in admin table
     cur.execute("SELECT id, campus FROM admin WHERE username = %s", (admin_username,))
     admin = cur.fetchone()
 
-    # check if admin exists in super_admin table
     cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (admin_username,))
     is_super_admin = cur.fetchone()
 
@@ -1281,7 +1237,6 @@ def program():
         return redirect(url_for("admin.login"))
 
     if is_super_admin:
-        # super admin
         admin_campus = is_super_admin["campus"] or "ALL"
         if selected_campus:
             cur.execute("""
@@ -1297,7 +1252,6 @@ def program():
                 ORDER BY created_at DESC
             """)
     else:
-        # normal admin (restricted to own campus)
         admin_campus = admin["campus"]
         cur.execute("""
             SELECT id, program_name, created_at, is_active, color
@@ -1340,14 +1294,12 @@ def deleteProgram():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Get admin campus
         cur.execute(
             "SELECT campus FROM admin WHERE username = %s",
             (admin_username,)
         )
         admin_campus = cur.fetchone()[0]
 
-        # Get program name (for logs)
         cur.execute(
             "SELECT program_name FROM program WHERE id = %s",
             (program_id,)
@@ -1359,13 +1311,11 @@ def deleteProgram():
 
         program_name = row[0]
 
-        # Delete program
         cur.execute(
             "DELETE FROM program WHERE id = %s",
             (program_id,)
         )
 
-        # Log action
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s)
@@ -1403,18 +1353,15 @@ def editProgram():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Get admin campus
         cur.execute("SELECT campus FROM admin WHERE username = %s", (admin_username,))
         admin_campus = cur.fetchone()[0]
 
-        # Get current program values
         cur.execute("SELECT program_name, color FROM program WHERE id = %s", (program_id,))
         row = cur.fetchone()
         if not row:
             return jsonify(success=False, message="Program not found")
         old_name, old_color = row
 
-        # Determine which fields are changing
         fields_to_update = []
         params = []
 
@@ -1435,12 +1382,10 @@ def editProgram():
 
         params.append(program_id)
 
-        # Update program
         sql = f"UPDATE program SET {', '.join(fields_to_update)} WHERE id = %s"
         cur.execute(sql, params)
 
-        # Log the action
-        action_text = "; ".join(action_parts)  # combine multiple changes with semicolon
+        action_text = "; ".join(action_parts)
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s)
@@ -1567,7 +1512,7 @@ def addParticipant():
             search_query="",
             admins=admins,
             success=True,
-            message=f"Participant '{fullname}' added successfully!"
+            message=f"Participant added successfully!"
         )
 
     except Exception as e:
@@ -1696,7 +1641,6 @@ def respondents():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 🔍 CHECK SUPER ADMIN FIRST
     cur.execute(
         "SELECT username, campus FROM super_admin WHERE username = %s",
         (username,)
@@ -1708,9 +1652,8 @@ def respondents():
 
     if super_admin:
         is_super_admin = True
-        admin_campus = super_admin[1]  # may be ALL / NULL
+        admin_campus = super_admin[1]
     else:
-        # 🔍 FALLBACK TO NORMAL ADMIN
         cur.execute(
             "SELECT username, campus FROM admin WHERE username = %s",
             (username,)
@@ -1724,7 +1667,6 @@ def respondents():
 
         admin_campus = admin[1]
 
-    # 📅 YEARS
     cur.execute("""
         SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
         FROM student
@@ -1732,7 +1674,6 @@ def respondents():
     """)
     available_years = [row[0] for row in cur.fetchall()]
 
-    # 🔎 FILTERS
     selected_year = request.args.get("year", type=int) or datetime.now().year
     search_query = request.args.get("q", "").strip()
     status_filter = request.args.get("status", "")
@@ -1740,7 +1681,6 @@ def respondents():
     selected_program = request.args.get("program", "")
     page = request.args.get("page", 1, type=int)
 
-    # 🎓 PROGRAM LIST
     if is_super_admin:
         if selected_campus:
             cur.execute("""
@@ -1774,7 +1714,6 @@ def respondents():
 
     programs = [row[0] for row in cur.fetchall()]
 
-    # 🧠 QUERY CONDITIONS
     params = [selected_year]
     conditions = []
 
@@ -1798,7 +1737,6 @@ def respondents():
     if where_clause:
         where_clause = "AND " + where_clause
 
-    # 📄 MAIN QUERY
     sql = f"""
         SELECT s.exam_id, s.fullname, sa.preferred_program,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
@@ -1859,7 +1797,6 @@ def respondents():
     cur.close()
     conn.close()
 
-    # 🔍 STATUS FILTER
     if status_filter == "match":
         students = [s for s in students if s[3] == "Match"]
     elif status_filter == "not_match":
@@ -1911,12 +1848,10 @@ def adminSurveyResult():
     admin_campus = None
 
     if super_admin:
-        # ✅ SUPER ADMIN
         is_super_admin = True
         admin_fullname = super_admin[0]
         admin_campus = super_admin[1]
     else:
-        # ✅ SUB ADMIN
         cur.execute(
             "SELECT fullname, campus FROM admin WHERE username = %s",
             (admin_username,)
@@ -1980,23 +1915,20 @@ def adminSurveyResult():
     }
 
     answers_clean = student_results["answers"]
-    preferred = student_results["preferred_program"]  # <- ALWAYS define it
+    preferred = student_results["preferred_program"]
 
     top_letters = []
     program_letters = []
 
     if answers_clean:
-        # get top 3 chosen letters
         letter_counts = Counter(answers_clean)
         top_letters = [letter for letter, _ in letter_counts.most_common(3)]
 
     if preferred:
-        # get category_letter from program table
         cur.execute("SELECT category_letter FROM program WHERE program_name = %s", (preferred,))
         result = cur.fetchone()
         program_letters = result[0].split(",") if result else []
 
-    # determine match
     if not preferred and not answers_clean:
         match_status = "Not Yet Answer"
     elif any(letter in program_letters for letter in top_letters):
@@ -2172,9 +2104,6 @@ def adminInventory():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    # =====================================================
-    # 🔍 CHECK SUPER ADMIN FIRST
-    # =====================================================
     cur.execute("""
         SELECT id, campus
         FROM super_admin
@@ -2189,7 +2118,6 @@ def adminInventory():
         is_super_admin = True
         admin_id, admin_campus = admin
     else:
-        # 🔍 SUB ADMIN
         cur.execute("""
             SELECT id, campus
             FROM admin
@@ -2204,16 +2132,10 @@ def adminInventory():
 
         admin_id, admin_campus = admin
 
-    # =====================================================
-    # FILTERS
-    # =====================================================
     selected_campus = request.args.get("campus", "")
     search_query = request.args.get("q", "")
     page = request.args.get("page", 1, type=int)
 
-    # =====================================================
-    # YEARS
-    # =====================================================
     cur.execute("""
         SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int 
         FROM student 
@@ -2223,9 +2145,6 @@ def adminInventory():
 
     selected_year = request.args.get("year", type=int) or datetime.now().year
 
-    # =====================================================
-    # MAIN QUERY
-    # =====================================================
     query = """
         SELECT 
             s.id,
@@ -2246,10 +2165,6 @@ def adminInventory():
         f"%{search_query}%"
     ]
 
-    # =====================================================
-    # 🔓 SUPER ADMIN → ANY CAMPUS
-    # 🔒 SUB ADMIN → OWN CAMPUS ONLY
-    # =====================================================
     if is_super_admin:
         if selected_campus:
             query += " AND s.campus = %s"
@@ -2263,9 +2178,6 @@ def adminInventory():
     cur.execute(query, params)
     students = cur.fetchall()
 
-    # =====================================================
-    # CLASSIFY INCOME
-    # =====================================================
     sort = request.args.get("sort", "income_asc")
 
     classified_students = []
@@ -2292,9 +2204,6 @@ def adminInventory():
             (id, exam_id, fullname, income_display, category)
         )
 
-    # =====================================================
-    # SORTING
-    # =====================================================
     if sort in ["name_asc", "name_desc"]:
         classified_students.sort(
             key=lambda x: x[2].lower(),
@@ -2312,9 +2221,6 @@ def adminInventory():
     cur.close()
     conn.close()
 
-    # =====================================================
-    # PAGINATION
-    # =====================================================
     total_students = len(classified_students)
     total_pages = max(1, ceil(total_students / PER_PAGE))
     start = (page - 1) * PER_PAGE
@@ -2351,9 +2257,6 @@ def adminInventoryResult():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    # =====================================================
-    # 🔍 CHECK SUPER ADMIN FIRST
-    # =====================================================
     cur.execute("""
         SELECT id, campus
         FROM super_admin
@@ -2368,7 +2271,6 @@ def adminInventoryResult():
         is_super_admin = True
         admin_id, admin_campus = admin
     else:
-        # 🔒 SUB ADMIN
         cur.execute("""
             SELECT id, campus
             FROM admin
@@ -2383,9 +2285,6 @@ def adminInventoryResult():
 
         admin_id, admin_campus = admin
 
-    # =====================================================
-    # FETCH STUDENT INFO (SUPER ADMIN CAN VIEW ALL)
-    # =====================================================
     cur.execute("""
         SELECT 
             s.id AS id,
@@ -2458,9 +2357,6 @@ def adminInventoryResult():
     if info and info["photo"]:
         student_photo_base64 = student_photo_to_base64(info["photo"])
 
-    # =====================================================
-    # ENROLLMENT / SCHOOL DATA
-    # =====================================================
     cur.execute("""
         SELECT reasons, other_reason
         FROM cpsu_enrollment_reason
@@ -2613,7 +2509,7 @@ def generateInterviewAI(student_id):
 
         if existing:
             import json
-            data = json.loads(existing[0])  # <-- convert string -> dict
+            data = json.loads(existing[0])
             return jsonify(data)
 
         cur.execute("""
@@ -2654,7 +2550,6 @@ def generateInterviewAI(student_id):
         if not letters:
             return jsonify({"error": "No survey answers"}), 400
 
-        # ---------- PROGRAM LETTERS ----------
         program_letters = []
         if preferred_program:
             cur.execute(
@@ -2665,7 +2560,6 @@ def generateInterviewAI(student_id):
             if res and res[0]:
                 program_letters = [x.strip() for x in res[0].split(",")]
 
-        # ---------- ANALYSIS ----------
         counts = Counter(letters)
         top_three = [l for l, _ in counts.most_common(3)]
 
@@ -2769,9 +2663,6 @@ def interviewList():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    # =====================================================
-    # 🔍 CHECK SUPER ADMIN FIRST
-    # =====================================================
     cur.execute("""
         SELECT id, campus
         FROM super_admin
@@ -2786,7 +2677,6 @@ def interviewList():
         is_super_admin = True
         admin_id, admin_campus = admin
     else:
-        # 🔒 SUB ADMIN
         cur.execute("""
             SELECT id, campus
             FROM admin
@@ -2801,12 +2691,10 @@ def interviewList():
 
         admin_id, admin_campus = admin
 
-    # filters
     selected_campus = request.args.get("campus", "")
     search_query = request.args.get("q", "")
     page = request.args.get("page", 1, type=int)
 
-    # years
     cur.execute("""
         SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
         FROM student
@@ -2863,7 +2751,6 @@ def interviewList():
         f"%{search_query}%"
     ]
 
-    # 🔒 campus rule
     if is_super_admin:
         if selected_campus:
             query += " AND s.campus = %s"
@@ -2952,14 +2839,12 @@ def save_schedule():
     cur = conn.cursor()
 
     try:
-        # 🔍 Get admin campus
         cur.execute(
             "SELECT campus FROM admin WHERE username = %s",
             (admin_username,)
         )
         admin_campus = cur.fetchone()[0]
 
-        # Check duplicate schedule
         cur.execute(
             "SELECT 1 FROM schedules WHERE schedule_date = %s",
             (schedule_date,)
@@ -2970,7 +2855,6 @@ def save_schedule():
                 "error": "A schedule already exists for this date."
             }), 400
 
-        # Insert schedule
         cur.execute("""
             INSERT INTO schedules
                 (schedule_date, start_time, end_time, slot_count, admin_username)
@@ -2983,7 +2867,6 @@ def save_schedule():
             admin_username
         ))
 
-        # Insert admin log
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s)
@@ -3021,9 +2904,6 @@ def visualization():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # =====================================================
-    # 🔍 CHECK SUPER ADMIN FIRST
-    # =====================================================
     cur.execute("""
         SELECT id, campus
         FROM super_admin
@@ -3038,7 +2918,6 @@ def visualization():
         is_super_admin = True
         admin_id, admin_campus = admin
     else:
-        # 🔒 SUB ADMIN
         cur.execute("""
             SELECT id, campus
             FROM admin
@@ -3053,24 +2932,15 @@ def visualization():
 
         admin_id, admin_campus = admin
 
-    # =====================================================
-    # 🎯 FILTERS
-    # =====================================================
     selected_year = request.args.get("year", str(datetime.now().year))
     selected_gender = request.args.get("gender", "All")
     selected_campus = request.args.get("campus", "")
 
-    # =====================================================
-    # 🏫 AVAILABLE CAMPUSES (SUPER ADMIN)
-    # =====================================================
     available_campuses = []
     if is_super_admin:
         cur.execute("SELECT DISTINCT campus FROM student ORDER BY campus ASC;")
         available_campuses = [r[0] for r in cur.fetchall()]
 
-    # =====================================================
-    # 📅 AVAILABLE YEARS
-    # =====================================================
     year_query = """
         SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
         FROM student
@@ -3089,20 +2959,13 @@ def visualization():
     cur.execute(year_query, tuple(params))
     available_years = [row[0] for row in cur.fetchall()]
 
-    # =====================================================
-    # 📊 PROGRAMS
-    # =====================================================
     cur.execute("SELECT id, program_name, color FROM program ORDER BY id ASC;")
     all_programs = cur.fetchall()
 
-    # =====================================================
-    # 🔁 DATA FETCH FUNCTION
-    # =====================================================
     def fetch_data_for_year(year=None, gender=None):
         filters = []
         params = []
 
-        # Campus rule
         if is_super_admin:
             if selected_campus:
                 filters.append("s.campus = %s")
@@ -3121,7 +2984,6 @@ def visualization():
 
         where_clause = "WHERE " + " AND ".join(filters) if filters else ""
 
-        # Preferred programs
         cur.execute(f"""
             SELECT COALESCE(ssa.preferred_program, 'Unknown'), COUNT(*)
             FROM student_survey_answer ssa
@@ -3133,7 +2995,6 @@ def visualization():
 
         preferred = cur.fetchall()
 
-        # Letters
         letter_cols = [f"pair{i}" for i in range(1, 87)]
         unions = [
             f"SELECT {c} AS letter FROM student_survey_answer ssa JOIN student s ON ssa.student_id = s.id "
@@ -3161,9 +3022,6 @@ def visualization():
             "top_counts": [r[1] for r in letters]
         }
 
-    # =====================================================
-    # 🧠 BUILD DATASET
-    # =====================================================
     if selected_year.lower() == "all":
         all_years_data = [fetch_data_for_year(y, selected_gender) for y in available_years]
     else:
@@ -3197,7 +3055,6 @@ def adminProfile():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 🔍 CHECK SUPER ADMIN FIRST
     cur.execute("""
         SELECT fullname, username, email, campus
         FROM super_admin
@@ -3212,7 +3069,6 @@ def adminProfile():
         is_super_admin = True
         table_name = "super_admin"
     else:
-        # 🔍 SUB ADMIN
         cur.execute("""
             SELECT fullname, username, email, campus
             FROM admin
@@ -3231,7 +3087,6 @@ def adminProfile():
         fullname = request.form.get("fullname")
         new_email = request.form.get("email")
 
-        # ✅ UPDATE FULLNAME (IMMEDIATE)
         cur.execute(f"""
             UPDATE {table_name}
             SET fullname = %s
@@ -3239,7 +3094,6 @@ def adminProfile():
         """, (fullname, username))
         conn.commit()
 
-        # 🔁 EMAIL CHANGE → OTP FLOW
         if new_email != admin_email:
             otp = generate_otp()
 
@@ -3247,7 +3101,7 @@ def adminProfile():
                 "otp": otp,
                 "new_email": new_email,
                 "username": username,
-                "table": table_name,   # 👈 IMPORTANT
+                "table": table_name,
                 "time": time.time(),
                 "attempts": 0
             }
@@ -3280,14 +3134,12 @@ def verify_email_change():
 
     data = session["email_change"]
 
-    # OTP expires in 5 minutes
     if time.time() - data["time"] > 300:
         session.pop("email_change")
         flash("Verification expired.", "error")
         return redirect(url_for("admin.adminProfile"))
 
     if request.method == "POST":
-        # 🔙 Back button
         if request.form.get("action") == "back":
             session.pop("email_change")
             flash("Email change cancelled.", "info")
@@ -3295,7 +3147,6 @@ def verify_email_change():
 
         entered_otp = request.form.get("otp")
 
-        # 🔒 Limit attempts
         data["attempts"] += 1
         session["email_change"] = data
 

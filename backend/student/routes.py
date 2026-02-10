@@ -60,7 +60,6 @@ def student_photo_to_base64(filename):
 def generate_ai_insights(top_letters, preferred_program, fullname):
     letters_str = ", ".join(top_letters)
 
-    # Convert letters to short descriptions
     letter_meanings = ", ".join(
         [f"{l} ({short_letter_descriptions.get(l, 'Unknown')})" for l in top_letters]
     )
@@ -134,7 +133,6 @@ def format_ai_explanation_for_pdf(text):
             f'<div class="ai-subtitle">{title}</div>'
         )
 
-    # Convert bullet points into list items
     lines = formatted.split("\n")
     html_lines = []
     in_list = False
@@ -203,7 +201,6 @@ def studentlogin():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # 1️⃣ Check if exam ID exists
         cur.execute(
             "SELECT * FROM student WHERE exam_id = %s",
             (exam_id,)
@@ -250,7 +247,6 @@ def verify():
 
     if request.method == "POST":
 
-        # 🔁 RESEND OTP
         if "resend" in request.form:
             last_sent = session.get("otp_time", 0)
 
@@ -270,7 +266,6 @@ def verify():
                 success=success
             )
 
-        # ✅ VERIFY OTP
         user_otp = request.form.get("otp", "")
 
         if time.time() - session.get("otp_time", 0) > 300:
@@ -280,7 +275,6 @@ def verify():
             error = "Invalid OTP"
 
         else:
-            # ✅ OTP SUCCESS → FINAL LOGIN
             exam_id = session["otp_exam_id"]
 
             conn = get_db_connection()
@@ -295,7 +289,6 @@ def verify():
             session["student_id"] = student[0]
             session["exam_id"] = exam_id
 
-            # 🔍 CHECK SURVEY COMPLETION
             cur.execute("""
                 SELECT preferred_program, pair1, pair2, pair3, pair4, pair5,
                        pair6, pair7, pair8, pair9, pair10,
@@ -321,7 +314,6 @@ def verify():
 
             survey_row = cur.fetchone()
 
-            # 🧹 CLEAN OTP SESSION
             session.pop("otp", None)
             session.pop("otp_email", None)
             session.pop("otp_exam_id", None)
@@ -390,7 +382,6 @@ def chatbot():
 def chatbot_receive_interest():
     letter = request.json.get("letter")
 
-    # pick 1 random reply
     if letter in ai_responses:
         reply = random.choice(ai_responses[letter])
     else:
@@ -492,7 +483,6 @@ def home():
                 else:
                     match_status = "❌ Not Match"
 
-            # If student is NOT matched, check if they already have a schedule
             if match_status == "❌ Not Match":
                 cur.execute("""
                     SELECT sc.schedule_date, sc.start_time, sc.end_time
@@ -717,7 +707,6 @@ def save_answer():
                 (session["exam_id"], session["student_id"], selected_option)
             )
 
-        # ✅ IF LAST QUESTION → INSERT NOTIFICATION
         if pair_number == TOTAL_PAIRS - 1:
             cur.execute("""
                 SELECT 1 FROM notifications
@@ -1061,7 +1050,6 @@ def surveyResult():
         result = cur.fetchone()
         program_letters = result[0].split(",") if result else []
 
-    # determine match
     if not preferred and not answers_clean:
         match_status = "Not Yet Answer"
     elif any(letter in program_letters for letter in top_letters):
@@ -1195,23 +1183,20 @@ def download_pdf(student_id):
     }
 
     answers_clean = student_data["answers"]
-    preferred = student_data["preferred_program"]  # <- ALWAYS define it
+    preferred = student_data["preferred_program"]
 
     top_letters = []
     program_letters = []
 
     if answers_clean:
-        # get top 3 chosen letters
         letter_counts = Counter(answers_clean)
         top_letters = [letter for letter, _ in letter_counts.most_common(3)]
 
     if preferred:
-        # get category_letter from program table
         cur.execute("SELECT category_letter FROM program WHERE program_name = %s", (preferred,))
         result = cur.fetchone()
         program_letters = result[0].split(",") if result else []
 
-    # determine match
     if not preferred and not answers_clean:
         match_status = "Not Yet Answer"
     elif any(letter in program_letters for letter in top_letters):
