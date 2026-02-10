@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADMIN LOGIN</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/aspirematch.png') }}">
+    <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-[#f6ebcd] flex flex-col">
+
+<!-- HEADER -->
+<header class="fixed top-0 left-0 right-0 bg-[#166D3B] text-[#f6ebcd] z-50">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-0 lg:gap-4">
+        <img src="/static/images/aspire.png" alt="AspireMatch Logo"
+             class="h-14 lg:h-20 w-auto">
+
+        <h1 class="text-center text-sm lg:text-2xl font-semibold tracking-wide leading-tight">
+            ASPIREMATCH:
+            <span class="font-light block lg:inline">
+                A Career Interest Recommendation Application
+            </span>
+        </h1>
+    </div>
+</header>
+
+<!-- PAGE CONTENT -->
+<main class="flex-grow flex items-center justify-center px-4 pt-32 lg:pt-16">
+
+    <!-- LOGIN CARD -->
+    <div class="bg-white rounded-md shadow-lg w-full max-w-md lg:max-w-lg p-6 lg:p-10 flex flex-col items-center">
+
+        <img src="{{ url_for('static', filename='images/logo.png') }}"
+             alt="Logo"
+             class="h-20 lg:h-24 mb-4">
+
+        <h2 class="text-xl lg:text-2xl font-bold text-center text-black mb-6">
+            Log In to access your Account
+        </h2>
+
+        {% if error %}
+        <div class="text-red-600 font-medium text-center mb-4">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form action="{{ url_for('admin.login') }}" method="POST" class="w-full space-y-4">
+
+            <div>
+                <label for="username" class="block text-[#166D3B] mb-1">Username</label>
+                <input type="text"
+                       name="username"
+                       id="username"
+                       value="{{ username | default('') }}"
+                       class="w-full p-2 border border-black rounded-md focus:outline-none focus:ring-2 focus:ring-[#166D3B]"
+                       required>
+            </div>
+
+            <div>
+                <label for="password" class="block text-[#166D3B] mb-1">Password</label>
+                <input type="password"
+                       name="password"
+                       id="password"
+                       class="w-full p-2 border border-black rounded-md focus:outline-none focus:ring-2 focus:ring-[#166D3B]"
+                       required>
+            </div>
+
+            <button type="submit"
+                {% if locked %}disabled{% endif %}
+                class="w-full py-2 mt-4 text-white rounded-md font-light tracking-widest transition
+                {% if locked %}
+                    bg-gray-400 cursor-not-allowed
+                {% else %}
+                    bg-[#166D3B] hover:bg-green-700
+                {% endif %}">
+                {% if locked %}
+                    Login Locked
+                {% else %}
+                    Login
+                {% endif %}
+            </button>
+
+            <div class="text-center pt-2">
+                <a href="{{ url_for('admin.forgot_password') }}"
+                   class="text-sm text-[#166D3B] underline">
+                    Forgot password?
+                </a>
+            </div>
+        </form>
+    </div>
+</main>
+
+<!-- SESSION MODAL -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+{% if category == "session_expired" %}
+<div id="sessionModal"
+     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center shadow-xl">
+        <h3 class="text-lg font-semibold text-red-600 mb-2">
+            Session Expired
+        </h3>
+        <p class="text-gray-700 mb-4">
+            {{ message }}
+        </p>
+        <button onclick="closeSessionModal()"
+                class="px-6 py-2 bg-[#166D3B] text-white rounded-md hover:opacity-90">
+            OK
+        </button>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endwith %}
+
+<script>
+  const modal = document.getElementById("sessionModal");
+
+  if (modal) {
+    setTimeout(() => modal.remove(), 3000);
+  }
+
+  function closeSessionModal() {
+    modal?.remove();
+  }
+</script>
+
+</body>
+</html>
