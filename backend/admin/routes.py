@@ -813,26 +813,44 @@ def addAdmin():
 
         hashed_pw = generate_password_hash(password)
 
-        session["new_admin_data"] = {
-            "fullname": fullname,
-            "username": username,
-            "email": email,
-            "campus": campus,
-            "password": hashed_pw
-        }
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-        otp = generate_otp()
-        session["new_admin_otp"] = otp
-        session["new_admin_otp_time"] = time.time()
-        session["new_admin_email"] = email
+        # Check duplicate username or email
+        cur.execute(
+            "SELECT 1 FROM admin WHERE username = %s OR email = %s",
+            (username, email)
+        )
+        exists = cur.fetchone()
 
-        sent = send_otp_email(email, otp)
+        if exists:
+            cur.close()
+            conn.close()
+            return render_template(
+                "admin/addAdmin.html",
+                admin_username=session["admin_username"],
+                is_super_admin=is_super_admin,
+                message="Username or email already exists.",
+                category="danger",
+                admins=[],
+                admin_campus=admin_campus
+            )
 
-        if not sent:
-            error = "Unable to send OTP. Please try again later."
-            return render_template("admin/adminForgotPassword.html", error=error)
+        # Insert admin directly (NO OTP)
+        cur.execute(
+            """
+            INSERT INTO admin (fullname, username, email, campus, password)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (fullname, username, email, campus, hashed_pw)
+        )
 
-        return redirect(url_for("admin.verify_new_admin"))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        message = "Admin account created successfully."
+        category = "success"
 
     admins = []
     conn = get_db_connection()
