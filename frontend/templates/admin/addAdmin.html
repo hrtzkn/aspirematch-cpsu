@@ -60,7 +60,7 @@
                     <div>
                         <label class="block text-black">Fullname</label>
                         <input type="text" name="fullname" required class="w-full p-2 border border-[#166D3B] bg-white rounded-md"
-                        oninput="this.value = this.value.toUpperCase().replace(/[^A-Za-z\s]/g, '')">
+                        oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
                     </div>
                     <div>
                         <label for="campus" class="block text-black">Campus</label>
@@ -317,7 +317,8 @@
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block mb-2">Full Name</label>
-                    <input id="editFullname" class="w-full border p-2 rounded mb-3">
+                    <input id="editFullname" class="w-full border p-2 rounded mb-3"
+                    oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
                 </div>
                 <div>
                     <label class="block mb-2">Campus</label>

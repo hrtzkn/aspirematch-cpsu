@@ -75,7 +75,7 @@
 
                         <input type="text" name="program_name" placeholder="Program Name" required
                             class="w-full p-2 border border-[#166D3B] rounded-lg bg-white"
-                            oninput="this.value = this.value.toUpperCase().replace(/[^A-Za-z\s]/g, '')">
+                            oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
 
             {% if is_super_admin %}
 
@@ -398,7 +398,8 @@
 
         <div class="mb-4 text-left">
             <label class="block mb-1 font-medium">Program Name</label>
-            <input type="text" id="editProgramName" class="w-full border rounded px-2 py-1">
+            <input type="text" id="editProgramName" class="w-full border rounded px-2 py-1"
+            oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
         </div>
 
         <div class="mb-4 text-left">

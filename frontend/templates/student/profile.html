@@ -111,7 +111,7 @@
                                 name="fullname"
                                 value="{{ student.fullname }}"
                                 required
-                                oninput="this.value = this.value.toUpperCase().replace(/[^A-Za-z\s]/g, '')"
+                                oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')"
                                 class="w-full p-2 border border-[#166D3B] rounded-md">
                         </div>
 

@@ -5,8 +5,6 @@ import psycopg2.extras
 import os
 import re
 from werkzeug.utils import secure_filename
-from PIL import Image
-from weasyprint import HTML
 from io import BytesIO
 import base64
 import smtplib
@@ -16,12 +14,9 @@ from ..description import letter_descriptions, preferred_program_map, ai_respons
 from math import ceil
 from calendar import monthrange
 import datetime
-from groq import Groq
 import random
 import time
 from datetime import datetime
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 student_bp = Blueprint('student', __name__, template_folder='../../frontend/templates/student')
 
@@ -56,6 +51,21 @@ def student_photo_to_base64(filename):
 
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
+
+def ask_ai(messages, temperature=0.3, max_tokens=700):
+    from groq import Groq
+    import os
+
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
+
+    return response.choices[0].message.content
 
 def generate_ai_insights(top_letters, preferred_program, fullname):
     letters_str = ", ".join(top_letters)
@@ -94,25 +104,20 @@ def generate_ai_insights(top_letters, preferred_program, fullname):
     - two sentence only
     """
 
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are an educational guidance AI. "
-                    "You MUST return ONLY plain text. "
-                    "Do NOT use asterisks (*), hashtags (#), or markdown formatting. "
-                    "Use only • for bullet points and plain headings without extra symbols."
-                )
-            },
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.3,
-        max_tokens=700
-    )
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an educational guidance AI. "
+                "You MUST return ONLY plain text. "
+                "Do NOT use asterisks (*), hashtags (#), or markdown formatting. "
+                "Use only • for bullet points and plain headings without extra symbols."
+            )
+        },
+        {"role": "user", "content": prompt}
+    ]
 
-    return response.choices[0].message.content
+    return ask_ai(messages, temperature=0.3, max_tokens=700)
 
 def format_ai_explanation_for_pdf(text):
     if not text:
@@ -182,6 +187,39 @@ def send_otp_email(email, otp):
     except Exception as e:
         current_app.logger.error(f"OTP email failed: {e}")
         return False
+    
+def generate_pdf(html):
+    from weasyprint import HTML
+    from io import BytesIO
+    from flask import current_app
+
+    pdf_io = BytesIO()
+
+    HTML(
+        string=html,
+        base_url=current_app.root_path
+    ).write_pdf(pdf_io)
+
+    pdf_io.seek(0)
+    return pdf_io
+    
+def process_image(file):
+    from PIL import Image
+
+    image = Image.open(file).convert("RGB")
+
+    width, height = image.size
+    size = min(width, height)
+
+    left = (width - size) / 2
+    top = (height - size) / 2
+    right = left + size
+    bottom = top + size
+
+    image = image.crop((left, top, right, bottom))
+    image = image.resize((300, 300))
+
+    return image
 
 @student_bp.route("/test-db")
 def test_db():
@@ -210,9 +248,9 @@ def studentlogin():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Check student by exam_id
+        # Check if student exists
         cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s",
+            "SELECT id FROM student WHERE exam_id = %s",
             (exam_id,)
         )
         student = cur.fetchone()
@@ -221,47 +259,66 @@ def studentlogin():
             exam_error = True
             error = "Invalid Examination ID"
 
-        else:
-            student_id, stored_email = student
+            cur.close()
+            conn.close()
 
-            # Optional: validate email if you want
-            if stored_email and stored_email != email:
-                email_error = True
-                error = "Email does not match our records"
-            else:
-                # Login student
-                session["student_id"] = student_id
-                session["exam_id"] = exam_id
+            return render_template(
+                "student/studentLogin.html",
+                error=error,
+                exam_error=exam_error,
+                email_error=email_error,
+                exam_id=exam_id,
+                email=email
+            )
 
-                # Check if survey already answered
-                cur.execute(
-                    """
-                    SELECT 1 FROM student_survey_answer
-                    WHERE exam_id = %s AND student_id = %s
-                    """,
-                    (exam_id, student_id)
-                )
-                survey_row = cur.fetchone()
+        student_id = student[0]
 
-                cur.close()
-                conn.close()
+        # 🔎 CHECK if student already answered survey
+        cur.execute(
+            "SELECT 1 FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
+            (exam_id, student_id)
+        )
+        survey_row = cur.fetchone()
 
-                if survey_row:
-                    return redirect(url_for("student.home"))
-                else:
-                    return redirect(url_for("student.survey"))
+        # ✅ IF survey already exists → NO OTP
+        if survey_row:
+            session["student_id"] = student_id
+            session["exam_id"] = exam_id
+
+            cur.close()
+            conn.close()
+
+            return redirect(url_for("student.home"))
+
+        # ❗ IF survey does NOT exist → REQUIRE OTP
+        otp = generate_otp()
+
+        session["otp"] = otp
+        session["otp_exam_id"] = exam_id
+        session["otp_email"] = email
+        session["otp_time"] = time.time()
+
+        sent = send_otp_email(email, otp)
+
+        if not sent:
+            error = "Unable to send OTP. Please try again later."
+
+            cur.close()
+            conn.close()
+
+            return render_template(
+                "student/studentLogin.html",
+                error=error,
+                exam_error=False,
+                email_error=False,
+                exam_id=exam_id,
+                email=email
+            )
 
         cur.close()
         conn.close()
 
-        return render_template(
-            "student/studentLogin.html",
-            error=error,
-            exam_error=exam_error,
-            email_error=email_error,
-            exam_id=exam_id,
-            email=email
-        )
+        return redirect(url_for("student.verify"))
 
     return render_template("student/studentLogin.html")
 
@@ -276,14 +333,14 @@ def verify():
             last_sent = session.get("otp_time", 0)
 
             if time.time() - last_sent < 60:
-                error = "1 minute after requesting new OTP."
+                error = "Please wait 1 minute before requesting a new OTP."
             else:
                 otp = generate_otp()
                 session["otp"] = otp
                 session["otp_time"] = time.time()
 
                 send_otp_email(session["otp_email"], otp)
-                success = "Please wait 1min before requesting a new OTP."
+                success = "New OTP sent successfully."
 
             return render_template(
                 "student/verify.html",
@@ -314,12 +371,7 @@ def verify():
             session["student_id"] = student[0]
             session["exam_id"] = exam_id
 
-            cur.execute(
-                "SELECT 1 FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
-                (exam_id, session["student_id"])
-            )
-            survey_row = cur.fetchone()
-
+            # Clear OTP session
             session.pop("otp", None)
             session.pop("otp_email", None)
             session.pop("otp_exam_id", None)
@@ -328,10 +380,7 @@ def verify():
             cur.close()
             conn.close()
 
-            if survey_row and all(survey_row):
-                return redirect(url_for("student.home"))
-            else:
-                return redirect(url_for("student.survey"))
+            return redirect(url_for("student.survey"))
 
     return render_template("student/verify.html", error=error, success=success)
 
@@ -360,26 +409,22 @@ def chatbot():
         })
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Your name is Dan. You are a friendly AI assistant in the AspireMatch system. "
-                        "Answer clearly, simply, and in a supportive tone."
-                    )
-                },
-                {"role": "user", "content": user_msg}
-            ],
-            temperature=0.4,
-            max_tokens=300
-        )
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Your name is Dan. You are a friendly AI assistant in the AspireMatch system. "
+                    "Answer clearly, simply, and in a supportive tone."
+                )
+            },
+            {"role": "user", "content": user_msg}
+        ]
 
-        reply = response.choices[0].message.content
+        reply = ask_ai(messages, temperature=0.4, max_tokens=300)
+
         return jsonify({"reply": reply})
 
-    except Exception as e:
+    except Exception:
         return jsonify({
             "reply": "Sorry, I'm having trouble responding right now. Please try again later."
         }), 500
@@ -1168,14 +1213,16 @@ def download_pdf(student_id):
 
     row = cur.fetchone()
 
+    if not row:
+        cur.close()
+        conn.close()
+        return "Survey results not found", 404
+
     created_at = row[2]
 
     start_year = created_at.year
     end_year = start_year + 1
     year = f"{start_year}-{end_year}"
-
-    if not row:
-        return "Survey results not found", 404
 
     student_data = {
         "exam_id": row[0],
@@ -1249,9 +1296,7 @@ def download_pdf(student_id):
         student_photo_base64=student_photo_base64
     )
 
-    pdf_io = BytesIO()
-    HTML(string=html, base_url=current_app.root_path).write_pdf(pdf_io)
-    pdf_io.seek(0)
+    pdf_file = generate_pdf(html)
 
     filename = f"Survey_Result_{student_data['exam_id']}.pdf"
 
@@ -1259,7 +1304,7 @@ def download_pdf(student_id):
     print("PHOTO BASE64:", bool(student_photo_base64))
 
     return send_file(
-        pdf_io,
+        pdf_file,
         mimetype="application/pdf",
         download_name=filename,
         as_attachment=True
@@ -2154,14 +2199,12 @@ def download_inventory_pdf(student_id):
         cpsu_logo_base64=cpsu_logo_base64
     )
 
-    pdf_io = BytesIO()
-    HTML(string=html, base_url=current_app.root_path).write_pdf(pdf_io)
-    pdf_io.seek(0)
+    pdf_file = generate_pdf(html)
 
     filename = f"Inventory_Result_{student_data['exam_id']}_{student_data['fullname'].replace(' ', '_')}.pdf"
 
     return send_file(
-        pdf_io,
+        pdf_file,
         mimetype="application/pdf",
         download_name=filename,
         as_attachment=True
@@ -2256,21 +2299,11 @@ def upload_student_photo():
         return redirect(url_for("student.surveyResult"))
 
     try:
-        image = Image.open(file).convert("RGB")
+        image = process_image(file)
     except Exception:
         flash("Invalid image file.", "error")
         conn.close()
         return redirect(url_for("student.surveyResult"))
-
-    width, height = image.size
-    size = min(width, height)
-    left = (width - size) / 2
-    top = (height - size) / 2
-    right = left + size
-    bottom = top + size
-
-    image = image.crop((left, top, right, bottom))
-    image = image.resize((300, 300))
 
     upload_folder = os.path.join(
         current_app.static_folder,
@@ -2280,15 +2313,17 @@ def upload_student_photo():
     os.makedirs(upload_folder, exist_ok=True)
 
     new_filename = f"exam_{session['exam_id']}.jpg"
-
     file_path = os.path.join(upload_folder, new_filename)
-    image.save(file_path, "JPEG", quality=95)
+
+    image.save(file_path, "JPEG", quality=90)
 
     cur.execute(
         "UPDATE student SET photo = %s WHERE id = %s",
         (new_filename, session["student_id"])
     )
+
     conn.commit()
+    cur.close()
     conn.close()
 
     flash("1×1 photo uploaded successfully", "success")

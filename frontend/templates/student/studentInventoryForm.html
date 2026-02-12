@@ -69,7 +69,7 @@
             <label class="font-semibold block">Place of Birth</label>
             <input type="text" name="place_of_birth"
                    class="w-full border border-black rounded px-4 py-2" required
-                   oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+                   oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
         </div>
     </div>
 
@@ -113,8 +113,7 @@
         <div>
             <label class="font-semibold block">Religion</label>
             <input type="text" name="religion"
-                   class="w-full p-2 border border-black rounded" required
-                   oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+                   class="w-full p-2 border border-black rounded" required>
         </div>
         <div>
             <label class="font-semibold block">Nationality</label>
@@ -237,12 +236,12 @@
 
       <div class="grid grid-cols-2 gap-4">
           <div><label class="block mt-2">Hobbies</label><input name="hobbies" class="block w-full p-2 border border-black rounded" required></div>
-          <div><label class="block mt-2">Talents</label><input name="talents" class="block w-full p-2 border border-black rounded" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')"></div>
+          <div><label class="block mt-2">Talents</label><input name="talents" class="block w-full p-2 border border-black rounded" required oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')"></div>
       </div>
 
       <h4 class="mt-2 font-semibold">Emergency Contact</h4>
       <div class="grid grid-cols-2 gap-4">
-          <div><label class="block mt-2">Name to notify:</label><input name="emergency_name" class="block w-full p-2 border border-black rounded" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')"></div>
+          <div><label class="block mt-2">Name to notify:</label><input name="emergency_name" class="block w-full p-2 border border-black rounded" required oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')"></div>
           <div><label class="block mt-2">Relationship:</label><input name="emergency_relationship" class="block w-full p-2 border border-black rounded" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')"></div>
       </div>
       <div class="grid grid-cols-2 gap-4">
@@ -286,9 +285,9 @@
     </div>
 
     <div class="grid grid-cols-3 gap-4 mb-4">
-        <input type="text" name="father_name" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+        <input type="text" name="father_name" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
         <label class="text-[9px] lg:text-sm flex justify-center mt-2">NAME:</label>
-        <input type="text" name="mother_name" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+        <input type="text" name="mother_name" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
     </div>
 
     <div class="grid grid-cols-3 gap-4 mb-4">
@@ -298,9 +297,9 @@
     </div>
 
     <div class="grid grid-cols-3 gap-4 mb-4">
-        <input type="text" name="father_education" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+        <input type="text" name="father_education" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
         <label class="flex justify-center text-[9px] lg:text-sm mt-2">HIGHEST EDUCATIONAL ATTAINMENT:</label>
-        <input type="text" name="mother_education" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+        <input type="text" name="mother_education" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
     </div>
 
     <div class="grid grid-cols-3 gap-4 mb-4">
@@ -508,7 +507,7 @@
   <div class="grid grid-cols-1 gap-4">
     <div>
       <label class="block font-semibold mt-2">Subject interested to:</label>
-      <input type="text" name="subject_interested" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+      <input type="text" name="subject_interested" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
     </div>
   </div>
 
@@ -522,7 +521,7 @@
   <div class="grid grid-cols-1 gap-4">
     <div>
       <label class="block font-semibold mt-2">How is your studies financed?</label>
-      <input type="text" name="study_finance" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+      <input type="text" name="study_finance" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
     </div>
   </div>
 
@@ -565,21 +564,21 @@
     <div class="grid grid-cols-1 gap-4">
         <div>
             <label class="block font-semibold mt-2">A. Who influenced you?</label>
-            <input type="text" name="influenced_by" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+            <input type="text" name="influenced_by" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
         </div>
     </div>
 
     <div class="grid grid-cols-1 gap-4">
         <div>
             <label class="block font-semibold mt-2">B. How do you feel about the course not being your first choice?</label>
-            <input type="text" name="feeling_about_course" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+            <input type="text" name="feeling_about_course" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
         </div>
     </div>
 
     <div class="grid grid-cols-1 gap-4">
         <div>
             <label class="block font-semibold mt-2">C. What is your personal choice?</label>
-            <input type="text" name="personal_choice" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+            <input type="text" name="personal_choice" class="w-full border border-black rounded px-4 py-2" required oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
         </div>
     </div>
 
@@ -651,7 +650,7 @@
             name="other_reason"
             class="w-full border border-black rounded px-4 py-2"
             placeholder="Type your reason here"
-            oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')"
+            oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')"
         >
         <span id="enrollCpsuError"
             class="text-red-600 text-sm mt-1 hidden">
@@ -1291,7 +1290,7 @@
   <div id="psychiatrist_extra" class="hidden mt-2">
     <div class="grid grid-cols-2 text-xs lg:text-lg">
       <label class="font-semibold text-center">If YES, for what reason?</label>
-      <input type="text" name="psychiatrist_reason" class="border-b border-black" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+      <input type="text" name="psychiatrist_reason" class="border-b border-black" oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
     <p id="psychiatrist_reason_error" class="text-red-600 text-sm hidden col-span-2"></p>
     </div>
 
@@ -1314,7 +1313,7 @@
   <div id="psychologist_extra" class="hidden mt-2">
     <div class="grid grid-cols-2 text-xs lg:text-lg">
       <label class="font-semibold text-center">If YES, for what reason?</label>
-      <input type="text" name="psychologist_reason" class="border-b border-black" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+      <input type="text" name="psychologist_reason" class="border-b border-black" oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
     <p id="psychologist_reason_error" class="text-red-600 text-sm hidden col-span-2"></p>
     </div>
 
@@ -1337,7 +1336,7 @@
   <div id="counselor_extra" class="hidden mt-2">
     <div class="grid grid-cols-2 text-xs lg:text-lg">
       <label class="font-semibold text-center">If YES, for what reason?</label>
-      <input type="text" name="counselor_reason" class="border-b border-black" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+      <input type="text" name="counselor_reason" class="border-b border-black" oninput="this.value = this.value.replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
     <p id="counselor_reason_error" class="text-red-600 text-sm hidden col-span-2"></p>
     </div>
 

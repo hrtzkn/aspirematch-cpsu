@@ -356,7 +356,7 @@
         <input type="text" name="fullname" id="editFullname"
        class="w-full border p-2 rounded mb-3"
        required
-       oninput="this.value = this.value.toUpperCase().replace(/[^A-Za-z\s]/g, '')">
+       oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
 
         <label class="block mb-2">Gender</label>
         <select name="gender" id="editGender"
@@ -415,7 +415,7 @@
                 <input type="text" name="fullname" id="editFullname"
                     class="w-full bg-white p-2 border border-black rounded"
                     required
-                    oninput="this.value = this.value.toUpperCase().replace(/[^A-Za-z\s]/g, '')">
+                    oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
             </div>
 
             <div class="grid grid-cols-2 gap-2 mb-4">
