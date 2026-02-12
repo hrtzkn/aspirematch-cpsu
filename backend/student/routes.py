@@ -179,7 +179,7 @@ def send_otp_email(email, otp):
     )
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
             server.login(EMAIL_USER, EMAIL_PASS)
             server.send_message(msg)
         return True
@@ -302,95 +302,6 @@ def studentlogin():
         )
 
     return render_template("student/studentLogin.html")
-
-"""
-@student_bp.route("/login", methods=["GET", "POST"])
-def studentlogin():
-    error = None
-    exam_error = False
-    email_error = False
-
-    if request.method == "POST":
-        exam_id = request.form["exam_id"]
-        email = request.form["email"]
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        # Check if student exists
-        cur.execute(
-            "SELECT id FROM student WHERE exam_id = %s",
-            (exam_id,)
-        )
-        student = cur.fetchone()
-
-        if not student:
-            exam_error = True
-            error = "Invalid Examination ID"
-
-            cur.close()
-            conn.close()
-
-            return render_template(
-                "student/studentLogin.html",
-                error=error,
-                exam_error=exam_error,
-                email_error=email_error,
-                exam_id=exam_id,
-                email=email
-            )
-
-        student_id = student[0]
-
-        # 🔎 CHECK if student already answered survey
-        cur.execute(
-            "SELECT 1 FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
-            (exam_id, student_id)
-        )
-        survey_row = cur.fetchone()
-
-        # ✅ IF survey already exists → NO OTP
-        if survey_row:
-            session["student_id"] = student_id
-            session["exam_id"] = exam_id
-
-            cur.close()
-            conn.close()
-
-            return redirect(url_for("student.home"))
-
-        # ❗ IF survey does NOT exist → REQUIRE OTP
-        otp = generate_otp()
-
-        session["otp"] = otp
-        session["otp_exam_id"] = exam_id
-        session["otp_email"] = email
-        session["otp_time"] = time.time()
-
-        sent = send_otp_email(email, otp)
-
-        if not sent:
-            error = "Unable to send OTP. Please try again later."
-
-            cur.close()
-            conn.close()
-
-            return render_template(
-                "student/studentLogin.html",
-                error=error,
-                exam_error=False,
-                email_error=False,
-                exam_id=exam_id,
-                email=email
-            )
-
-        cur.close()
-        conn.close()
-
-        return redirect(url_for("student.verify"))
-
-    return render_template("student/studentLogin.html")
-"""
 
 @student_bp.route("/verify", methods=["GET", "POST"])
 def verify():
