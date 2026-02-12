@@ -9,3 +9,4 @@ WeasyPrint
 Werkzeug
 Jinja2
 pillow
+openpyxl
