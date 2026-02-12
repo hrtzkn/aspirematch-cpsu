@@ -248,9 +248,9 @@ def studentlogin():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Check student by exam_id
+        # Check if student exists
         cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s",
+            "SELECT id FROM student WHERE exam_id = %s",
             (exam_id,)
         )
         student = cur.fetchone()
@@ -259,47 +259,66 @@ def studentlogin():
             exam_error = True
             error = "Invalid Examination ID"
 
-        else:
-            student_id, stored_email = student
+            cur.close()
+            conn.close()
 
-            # Optional: validate email if you want
-            if stored_email and stored_email != email:
-                email_error = True
-                error = "Email does not match our records"
-            else:
-                # Login student
-                session["student_id"] = student_id
-                session["exam_id"] = exam_id
+            return render_template(
+                "student/studentLogin.html",
+                error=error,
+                exam_error=exam_error,
+                email_error=email_error,
+                exam_id=exam_id,
+                email=email
+            )
 
-                # Check if survey already answered
-                cur.execute(
-                    """
-                    SELECT 1 FROM student_survey_answer
-                    WHERE exam_id = %s AND student_id = %s
-                    """,
-                    (exam_id, student_id)
-                )
-                survey_row = cur.fetchone()
+        student_id = student[0]
 
-                cur.close()
-                conn.close()
+        # 🔎 CHECK if student already answered survey
+        cur.execute(
+            "SELECT 1 FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
+            (exam_id, student_id)
+        )
+        survey_row = cur.fetchone()
 
-                if survey_row:
-                    return redirect(url_for("student.home"))
-                else:
-                    return redirect(url_for("student.survey"))
+        # ✅ IF survey already exists → NO OTP
+        if survey_row:
+            session["student_id"] = student_id
+            session["exam_id"] = exam_id
+
+            cur.close()
+            conn.close()
+
+            return redirect(url_for("student.home"))
+
+        # ❗ IF survey does NOT exist → REQUIRE OTP
+        otp = generate_otp()
+
+        session["otp"] = otp
+        session["otp_exam_id"] = exam_id
+        session["otp_email"] = email
+        session["otp_time"] = time.time()
+
+        sent = send_otp_email(email, otp)
+
+        if not sent:
+            error = "Unable to send OTP. Please try again later."
+
+            cur.close()
+            conn.close()
+
+            return render_template(
+                "student/studentLogin.html",
+                error=error,
+                exam_error=False,
+                email_error=False,
+                exam_id=exam_id,
+                email=email
+            )
 
         cur.close()
         conn.close()
 
-        return render_template(
-            "student/studentLogin.html",
-            error=error,
-            exam_error=exam_error,
-            email_error=email_error,
-            exam_id=exam_id,
-            email=email
-        )
+        return redirect(url_for("student.verify"))
 
     return render_template("student/studentLogin.html")
 
