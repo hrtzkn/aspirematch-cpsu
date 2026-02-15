@@ -163,11 +163,19 @@ def generate_otp():
     return str(random.randint(100000, 999999))
 
 def send_otp_email(email, otp):
+    import os
+    import smtplib
+    import ssl
+    import time
+    from email.message import EmailMessage
+    from flask import current_app
+
     EMAIL_USER = os.getenv("EMAIL_USER")
     EMAIL_PASS = os.getenv("EMAIL_PASS")
 
+    # 1️⃣ Validate credentials
     if not EMAIL_USER or not EMAIL_PASS:
-        current_app.logger.error("Email credentials not set")
+        current_app.logger.error("❌ EMAIL_USER or EMAIL_PASS not set in environment variables.")
         return False
 
     msg = EmailMessage()
@@ -175,19 +183,47 @@ def send_otp_email(email, otp):
     msg["From"] = EMAIL_USER
     msg["To"] = email
     msg.set_content(
-        f"Your One-Time Password (OTP) is:\n\n{otp}\n\nThis code will expire in 5 minutes."
+        f"""Your One-Time Password (OTP) is:
+
+{otp}
+
+This code will expire in 5 minutes.
+
+If you did not request this, please ignore this email.
+"""
     )
 
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
-            server.login(EMAIL_USER, EMAIL_PASS)
-            server.send_message(msg)
-        return True
+    context = ssl.create_default_context()
 
-    except Exception as e:
-        current_app.logger.error(f"OTP email failed: {e}")
-        return False
-    
+    # 2️⃣ Retry logic (2 attempts)
+    for attempt in range(2):
+        try:
+            current_app.logger.info(f"📧 Attempt {attempt + 1}: Sending OTP to {email}")
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context, timeout=30) as server:
+                server.login(EMAIL_USER, EMAIL_PASS)
+                server.send_message(msg)
+
+            current_app.logger.info("✅ OTP email sent successfully.")
+            return True
+
+        except smtplib.SMTPAuthenticationError as e:
+            current_app.logger.error("❌ Gmail authentication failed. Check App Password.")
+            current_app.logger.error(str(e))
+            return False
+
+        except smtplib.SMTPException as e:
+            current_app.logger.error(f"⚠ SMTP error occurred: {e}")
+
+        except Exception as e:
+            current_app.logger.error(f"⚠ Unexpected error while sending OTP: {e}")
+
+        # Wait before retrying
+        time.sleep(2)
+
+    current_app.logger.error("❌ OTP email failed after retries.")
+    return False
+
 def generate_pdf(html):
     from weasyprint import HTML
     from io import BytesIO
@@ -235,75 +271,6 @@ def get_letter_description(letter):
 def login_page():
     return render_template("student/studentLogin.html")
 
-@student_bp.route("/login", methods=["GET", "POST"])
-def studentlogin():
-    error = None
-    exam_error = False
-    email_error = False
-
-    if request.method == "POST":
-        exam_id = request.form["exam_id"]
-        email = request.form["email"]
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        # Check student by exam_id
-        cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s",
-            (exam_id,)
-        )
-        student = cur.fetchone()
-
-        if not student:
-            exam_error = True
-            error = "Invalid Examination ID"
-
-        else:
-            student_id, stored_email = student
-
-            # Optional: validate email if you want
-            if stored_email and stored_email != email:
-                email_error = True
-                error = "Email does not match our records"
-            else:
-                # Login student
-                session["student_id"] = student_id
-                session["exam_id"] = exam_id
-
-                # Check if survey already answered
-                cur.execute(
-                    """
-                    SELECT 1 FROM student_survey_answer
-                    WHERE exam_id = %s AND student_id = %s
-                    """,
-                    (exam_id, student_id)
-                )
-                survey_row = cur.fetchone()
-
-                cur.close()
-                conn.close()
-
-                if survey_row:
-                    return redirect(url_for("student.home"))
-                else:
-                    return redirect(url_for("student.survey"))
-
-        cur.close()
-        conn.close()
-
-        return render_template(
-            "student/studentLogin.html",
-            error=error,
-            exam_error=exam_error,
-            email_error=email_error,
-            exam_id=exam_id,
-            email=email
-        )
-
-    return render_template("student/studentLogin.html")
-
-"""
 @student_bp.route("/login", methods=["GET", "POST"])
 def studentlogin():
     error = None
@@ -390,7 +357,6 @@ def studentlogin():
         return redirect(url_for("student.verify"))
 
     return render_template("student/studentLogin.html")
-"""
 
 @student_bp.route("/verify", methods=["GET", "POST"])
 def verify():
