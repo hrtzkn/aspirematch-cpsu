@@ -111,15 +111,15 @@ class="
     border-r lg:border-r
     z-30 lg:z-20
 ">   
-<nav class="flex-1 overflow-x-auto lg:overflow-visible">
+<nav class="flex-1 overflow-visible">
     <ul class="
         flex lg:flex-col
-        py-2 lg:py-4
-        px-2 lg:px-0
+        py-1 lg:py-2
+        px-1 lg:px-0
         gap-1 lg:gap-0
         whitespace-nowrap
     ">
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.dashboard') else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.dashboard') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
@@ -134,7 +134,7 @@ class="
                     </span>
                     </a>
                 </li>
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path in [url_for('admin.respondents'), url_for('admin.adminSurveyResult')] else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.respondents') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
@@ -148,7 +148,7 @@ class="
                         <span class="hidden lg:inline {{ 'text-[#166D3B]' if request.path in [url_for('admin.respondents'), url_for('admin.adminSurveyResult')] else 'text-black group-hover:text-[#166D3B]' }}">RESPONDENTS</span>
                     </a>
                 </li>
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path in [url_for('admin.adminInventory'), url_for('admin.adminInventoryResult')] else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.adminInventory') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
@@ -160,7 +160,7 @@ class="
                         <span class="hidden lg:inline {{ 'text-[#166D3B]' if request.path in [url_for('admin.adminInventory'), url_for('admin.adminInventoryResult')] else 'text-black group-hover:text-[#166D3B]' }}">INVENTORY</span>
                     </a>
                 </li>
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.interviewList') else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.interviewList') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
@@ -176,7 +176,7 @@ class="
                     </a>
                 </li>
 
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.visualization') else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.visualization') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
@@ -189,7 +189,7 @@ class="
                         <span class="hidden lg:inline {{ 'text-[#166D3B]' if request.path == url_for('admin.visualization') else 'text-black group-hover:text-[#166D3B]' }}">VISUALIZATIONS</span>
                     </a>
                 </li>
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.addAdmin') else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.addAdmin') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
@@ -203,7 +203,7 @@ class="
                         <span class="hidden lg:inline {{ 'text-[#166D3B]' if request.path == url_for('admin.addAdmin') else 'text-black group-hover:text-[#166D3B]' }}">ADMINISTRATOR</span>
                     </a>
                 </li>
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.program') else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.program') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
@@ -216,7 +216,7 @@ class="
                         <span class="hidden lg:inline {{ 'text-[#166D3B]' if request.path == url_for('admin.program') else 'text-black group-hover:text-[#166D3B]' }}">PROGRAM</span>
                     </a>
                 </li>
-                <li class="m-1 rounded-xl flex-shrink-0 
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.adminProfile') else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.adminProfile') }}" 
                     class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">

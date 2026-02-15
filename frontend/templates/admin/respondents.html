@@ -33,10 +33,10 @@
 
     <!-- MAIN CONTENT -->
     <div class="flex flex-1">
-        <main class="ml-60 mr-2 flex-1 bg-[#f6ebcd] mt-20 rounded-2xl mb-16">
-            <div class="bg-white p-3 shadow-md rounded-md border border-[#166D3B] ">
+        <main class="ml-0 lg:ml-56 mr-0 lg:mr-2 flex-1 bg-[#f6ebcd] p-1 lg:p-3 mb-0 lg:mb-16 mt-32 lg:mt-16 h-fit">
+            <div class="bg-white p-2 lg:p-3 shadow-md rounded-md border border-[#166D3B] ">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold">RESPONDENTS</h1>
+                    <h1 class="text-xs lg:text-2xl font-bold">RESPONDENTS</h1>
 
                     <form method="GET" action="{{ url_for('admin.respondents') }}" class="flex items-center">
                         <input type="hidden" name="status" value="{{ status_filter }}">
@@ -45,8 +45,8 @@
                         <input type="hidden" name="campus" value="{{ selected_campus }}">
                         {% endif %}
                         <input type="hidden" name="program" value="{{ selected_program }}">
-                        <label class="text-black font-bold ml-2 mr-1">Year:</label>
-                        <select name="year" class="border border-[#166D3B] rounded-lg p-2"
+                        <label class="text-black text-[9px] lg:text-sm font-bold ml-1 lg:ml-2 mr-0 lg:mr-1">Year:</label>
+                        <select name="year" class="border border-[#166D3B] text-[9px] lg:text-sm rounded-lg p-1 lg:p-2"
                                 onchange="this.form.submit()">
                             {% for y in available_years %}
                                 <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
@@ -61,8 +61,8 @@
                         <input type="hidden" name="campus" value="{{ selected_campus }}">
                         {% endif %}
                         <input type="hidden" name="program" value="{{ selected_program }}">
-                        <label class="text-black font-bold mr-1">Status:</label>
-                        <select name="status" class="border border-[#166D3B] rounded-lg p-2"
+                        <label class="text-black text-[9px] lg:text-sm font-bold mr-0 lg:mr-1">Status:</label>
+                        <select name="status" class="border border-[#166D3B] text-[9px] lg:text-sm rounded-lg p-1 lg:p-2"
                                 onchange="this.form.submit()">
                             <option value="" {% if status_filter == '' %}selected{% endif %}>All</option>
                             <option value="match" {% if status_filter == 'match' %}selected{% endif %}>Match</option>
@@ -82,7 +82,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="currentColor"
-                            class="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-black">
+                            class="absolute left-3 top-1/2 -translate-y-1/2 size-3 lg:size-5 text-black">
                         <path d="M8.25 10.875a2.625 2.625 0 1 1 5.25 0 2.625 2.625 0 0 1-5.25 0Z" />
                         <path fill-rule="evenodd"
                                 d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75
@@ -98,14 +98,14 @@
                             name="q"
                             value="{{ search_query }}"
                             placeholder="Search student..."
-                            class="w-full pl-10 pr-3 py-2 border border-[#166D3B] rounded-lg
-                                    text-gray-700 focus:outline-none focus:ring-2
+                            class="w-full pl-10 pr-3 py-1 lg:py-2 border border-[#166D3B] rounded-lg
+                                    text-gray-700 text-[9px] lg:text-sm focus:outline-none focus:ring-2
                                     focus:ring-[#166D3B]/40">
                     </div>
 
                     <!-- Button -->
                     <button type="submit"
-                            class="bg-[#166D3B] text-white px-4 py-2 rounded-lg
+                            class="bg-[#166D3B] text-white text-[9px] lg:text-sm px-2 lg:px-4 py-1 lg:py-2 rounded-lg
                                     hover:bg-[#145c33] transition">
                         Search
                     </button>
@@ -122,11 +122,11 @@
         <input type="hidden" name="q" value="{{ search_query }}">
         <input type="hidden" name="program" value="{{ selected_program }}">
 
-            <label for="campus" class="text-black justify-center font-bold mb-1">
+            <label for="campus" class="text-black text-[9px] lg:text-sm justify-center font-bold mb-1">
                 Campus:
             </label>
             <select id="campus" name="campus"
-                    class="border border-[#166D3B] rounded-md px-3 py-2 text-sm h-[38px]"
+                    class="border border-[#166D3B] rounded-md px-3 py-2 text-xs lg:text-sm h-[38px]"
                     onchange="this.form.submit()">
                 <option value="">All Campuses</option>
                 <option value="Kabankalan Main Campus" {% if request.args.get('campus') == 'Kabankalan Main Campus' %}selected{% endif %}>Kabankalan Main Campus</option>
@@ -156,12 +156,12 @@
         <input type="hidden" name="campus" value="{{ selected_campus }}">
         {% endif %}
 
-            <label class="text-black text-sm font-bold mb-1">
+            <label class="text-black text-[9px] lg:text-sm font-bold mb-1">
                 Program:
             </label>
             <select name="program"
                     onchange="this.form.submit()"
-                    class="border border-[#166D3B] rounded-md px-3 py-2 text-sm h-[38px]">
+                    class="border border-[#166D3B] rounded-md px-1 lg:px-3 py-1 lg:py-2 text-[7px] lg:text-sm w-fit h-fit">
                 <option value="">All Programs</option>
                 {% for program in programs %}
                     <option value="{{ program }}"
@@ -173,29 +173,29 @@
     </form>
 </div>
 
-                <table class="w-full border border-[#166D3B] mt-3 rounded-lg text-[14px]">
-                    <thead>
-                        <tr class="bg-[#166D3B] border border-[#166D3B] text-white text-center">
-                            <th class="py-2 px-4 border">Exam ID</th>
-                            <th class="py-2 px-4 border">Student Name</th>
-                            <th class="py-2 px-4 border">Preferred Program</th>
-                            <th class="py-2 px-4 border">Predicted Program</th>
-                            <th class="py-2 px-4 border">Status</th>
+                <table class="w-fit lg:w-full border border-[#166D3B] mt-3 rounded-lg text-[8px] lg:text-[14px]">
+                    <thead class="bg-[#166D3B] border border-[#166D3B] text-white text-center">
+                        <tr>
+                            <th class="py-1 lg:py-2 px-2 lg:px-4 border">Exam ID</th>
+                            <th class="py-1 lg:py-2 px-2 lg:px-4 border">Student Name</th>
+                            <th class="py-1 lg:py-2 px-2 lg:px-4 border">Preferred Program</th>
+                            <th class="py-1 lg:py-2 px-2 lg:px-4 border">Predicted Program</th>
+                            <th class="py-1 lg:py-2 px-2 lg:px-4 border">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% if students %}
                             {% for student in students %}
                                 <tr class="hover:bg-gray-100">
-                                    <td class="py-2 px-4 border text-center">{{ student[0] }}</td>
-                                    <td class="py-2 px-4 border text-start">
-                                        <div class="hover-scroll" title="{{ student[1] }}">
+                                    <td class="py-1 lg:py-2 px-2 lg:px-4 border text-center">{{ student[0] }}</td>
+                                    <td class="py-1 lg:py-2 px-2 lg:px-4 border text-start">
+                                        <div class="lg:hover-scroll" title="{{ student[1] }}">
                                             <span>{{ student[1]|upper }}</span>
                                         </div>
                                     </td>
-                                    <td class="py-2 px-4 border text-start">
+                                    <td class="py-1 lg:py-2 px-2 lg:px-4 border text-start">
                                         {% if student[2] %}
-                                            <div class="hover-scroll" title="{{ student[2] }}">
+                                            <div class="lg:hover-scroll" title="{{ student[2] }}">
                                                 <span>{{ student[2] }}</span>
                                             </div>
                                         {% else %}
@@ -204,7 +204,7 @@
                                            </div>
                                         {% endif %}
                                     </td>
-                                    <td class="py-2 px-4 border text-center">
+                                    <td class="py-1 lg:py-2 px-2 lg:px-4 border text-center">
                                         {% if student[2] and student[2] != "___" %}
                                             <a href="{{ url_for('admin.adminSurveyResult', exam_id=student[0]) }}"
                                             class="bg-[#166D3B] text-white px-3 py-1 rounded-lg shadow hover:bg-[#145c33]">
@@ -214,7 +214,7 @@
                                             ——
                                         {% endif %}
                                     </td>
-                                    <td class="py-2 px-4 border text-center">
+                                    <td class="py-1 lg:py-2 px-2 lg:px-4 border text-center">
                                         <span class="font-semibold {% if student[3] == 'Match' %}text-[#166D3B]{% elif student[3] == 'Not Match' %}text-red-600{% else %}text-gray-500{% endif %}">
                                             {{ student[3]|upper }}
                                         </span>
