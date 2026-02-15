@@ -10,3 +10,4 @@ Werkzeug
 Jinja2
 pillow
 openpyxl
+requests
