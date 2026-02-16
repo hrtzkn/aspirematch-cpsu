@@ -179,7 +179,7 @@
                             <th class="py-1 lg:py-2 px-2 lg:px-4 border">Exam ID</th>
                             <th class="py-1 lg:py-2 px-2 lg:px-4 border">Student Name</th>
                             <th class="py-1 lg:py-2 px-2 lg:px-4 border">Preferred Program</th>
-                            <th class="py-1 lg:py-2 px-2 lg:px-4 border">Predicted Program</th>
+                            <th class="py-1 lg:py-2 px-2 lg:px-4 border">Recommended Program</th>
                             <th class="py-1 lg:py-2 px-2 lg:px-4 border">Status</th>
                         </tr>
                     </thead>
@@ -189,13 +189,13 @@
                                 <tr class="hover:bg-gray-100">
                                     <td class="py-1 lg:py-2 px-2 lg:px-4 border text-center">{{ student[0] }}</td>
                                     <td class="py-1 lg:py-2 px-2 lg:px-4 border text-start">
-                                        <div class="lg:hover-scroll" title="{{ student[1] }}">
+                                        <div class="hover-scroll" title="{{ student[1] }}">
                                             <span>{{ student[1]|upper }}</span>
                                         </div>
                                     </td>
                                     <td class="py-1 lg:py-2 px-2 lg:px-4 border text-start">
                                         {% if student[2] %}
-                                            <div class="lg:hover-scroll" title="{{ student[2] }}">
+                                            <div class="hover-scroll" title="{{ student[2] }}">
                                                 <span>{{ student[2] }}</span>
                                             </div>
                                         {% else %}

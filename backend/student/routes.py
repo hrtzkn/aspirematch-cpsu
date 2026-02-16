@@ -163,29 +163,58 @@ def generate_otp():
     return str(random.randint(100000, 999999))
 
 def send_otp_email(email, otp):
-    EMAIL_USER = os.getenv("EMAIL_USER")
-    EMAIL_PASS = os.getenv("EMAIL_PASS")
+    import os
+    import requests
+    from flask import current_app
 
-    if not EMAIL_USER or not EMAIL_PASS:
-        current_app.logger.error("Email credentials not set")
+    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+
+    if not SENDGRID_API_KEY:
+        current_app.logger.error("❌ SENDGRID_API_KEY not set.")
         return False
 
-    msg = EmailMessage()
-    msg["Subject"] = "Your AspireMatch Login OTP"
-    msg["From"] = EMAIL_USER
-    msg["To"] = email
-    msg.set_content(
-        f"Your One-Time Password (OTP) is:\n\n{otp}\n\nThis code will expire in 5 minutes."
-    )
+    data = {
+        "personalizations": [
+            {
+                "to": [{"email": email}],
+                "subject": "Your AspireMatch Login OTP"
+            }
+        ],
+        "from": {"email": "aspirematch2@gmail.com"},
+        "content": [
+            {
+                "type": "text/plain",
+                "value": f"""Your One-Time Password (OTP) is:
+
+{otp}
+
+This code will expire in 5 minutes.
+
+If you did not request this, please ignore this email."""
+            }
+        ]
+    }
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
-            server.login(EMAIL_USER, EMAIL_PASS)
-            server.send_message(msg)
-        return True
+        response = requests.post(
+            "https://api.sendgrid.com/v3/mail/send",
+            headers={
+                "Authorization": f"Bearer {SENDGRID_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json=data,
+            timeout=15
+        )
+
+        if response.status_code == 202:
+            current_app.logger.info("✅ OTP email sent via SendGrid.")
+            return True
+        else:
+            current_app.logger.error(f"❌ SendGrid error: {response.text}")
+            return False
 
     except Exception as e:
-        current_app.logger.error(f"OTP email failed: {e}")
+        current_app.logger.error(f"❌ SendGrid exception: {e}")
         return False
     
 def generate_pdf(html):
@@ -248,79 +277,10 @@ def studentlogin():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Check student by exam_id
-        cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s",
-            (exam_id,)
-        )
-        student = cur.fetchone()
-
-        if not student:
-            exam_error = True
-            error = "Invalid Examination ID"
-
-        else:
-            student_id, stored_email = student
-
-            # Optional: validate email if you want
-            if stored_email and stored_email != email:
-                email_error = True
-                error = "Email does not match our records"
-            else:
-                # Login student
-                session["student_id"] = student_id
-                session["exam_id"] = exam_id
-
-                # Check if survey already answered
-                cur.execute(
-                    """
-                    SELECT 1 FROM student_survey_answer
-                    WHERE exam_id = %s AND student_id = %s
-                    """,
-                    (exam_id, student_id)
-                )
-                survey_row = cur.fetchone()
-
-                cur.close()
-                conn.close()
-
-                if survey_row:
-                    return redirect(url_for("student.home"))
-                else:
-                    return redirect(url_for("student.survey"))
-
-        cur.close()
-        conn.close()
-
-        return render_template(
-            "student/studentLogin.html",
-            error=error,
-            exam_error=exam_error,
-            email_error=email_error,
-            exam_id=exam_id,
-            email=email
-        )
-
-    return render_template("student/studentLogin.html")
-
-"""
-@student_bp.route("/login", methods=["GET", "POST"])
-def studentlogin():
-    error = None
-    exam_error = False
-    email_error = False
-
-    if request.method == "POST":
-        exam_id = request.form["exam_id"]
-        email = request.form["email"]
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
         # Check if student exists
         cur.execute(
-            "SELECT id FROM student WHERE exam_id = %s",
-            (exam_id,)
+            "SELECT id FROM student WHERE exam_id = %s AND email = %s",
+            (exam_id, email)
         )
         student = cur.fetchone()
 
@@ -390,7 +350,6 @@ def studentlogin():
         return redirect(url_for("student.verify"))
 
     return render_template("student/studentLogin.html")
-"""
 
 @student_bp.route("/verify", methods=["GET", "POST"])
 def verify():
