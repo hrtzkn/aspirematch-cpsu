@@ -279,8 +279,8 @@ def studentlogin():
 
         # Check student by exam_id
         cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s",
-            (exam_id,)
+            "SELECT id, email FROM student WHERE exam_id = %s AND email = %s",
+            (exam_id, email)
         )
         student = cur.fetchone()
 
