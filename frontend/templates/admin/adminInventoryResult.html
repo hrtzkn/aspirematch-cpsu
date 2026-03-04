@@ -46,31 +46,7 @@
                 {{ info.campus }}
             </div>
             <div style="color: black; font-size: 12px;">
-                {% if info.campus == 'San Carlos Campus' %}
-                    Sitio Mabuni, Brgy. Guadalupe, San Carlos City, Negros Occidental
-                {% elif info.campus == 'Candoni Campus' %}
-                    Brgy. West, Candoni, Negros Occidental
-                {% elif info.campus == 'Cauayan Campus' %}
-                    Brgy. Poblacion Cauayan, Negros Occidental
-                {% elif info.campus == 'Moises Padilla Campus' %}
-                    Brgy. Poblacion, Moises Padilla, Negros Occidental
-                {% elif info.campus == 'Kabankalan Campus' %}
-                    Kabanlakan City, Negros Occidental
-                {% elif info.campus == 'Hinigaran  Campus' %}
-                    Brgy. Gargato, Hinigaran, Negros Occidental
-                {% elif info.campus == 'Hinoba-an Campus' %}
-                    Brgy. Pook, Hinoba-an, Negros Occidental
-                {% elif info.campus == 'Sipalay Campus' %}
-                    Brgy. Gil Montilla, Sipalay City, Negros Occidental
-                {% elif info.campus == 'Victorias Campus' %}
-                    Brgy. XIV, Vinctorias City, Negros Occidental
-                {% elif info.campus == 'Valladolid Extension Campus' %}
-                    Valladolid, Negros Occidental
-                {% elif info.campus == 'Ilog  Campus' %}
-                    Brgy. 1, Municipality of Ilog, Negros Occidental
-                {% else %}
-                    Campus Address
-                {% endif %}
+                {{ campus_info.get(info.campus, 'Campus Address') }}
             </div>
             <div style="color: black; font-weight: bold; text-transform: uppercase; font-size: 16px;">
                 Guidance and Counseling Unit

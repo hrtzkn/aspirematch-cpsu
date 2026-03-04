@@ -101,18 +101,21 @@
             class="border border-[#166D3B] rounded-md px-3 py-2 text-sm h-[38px]"
             onchange="this.form.submit()">
         <option value="">All Campuses</option>
-        {% for c in [
-            'Kabankalan Main Campus','Candoni Campus','Cauayan Campus',
-            'Hinigaran Campus','Hinoba-an Campus','Ilog Campus',
-            'Moises Padilla Campus','San Carlos Campus','Sipalay Campus',
-            'Valladolid Extension Campus','Victorias Campus'
-        ] %}
-        <option value="{{ c }}" {% if request.args.get('campus') == c %}selected{% endif %}>
-            {{ c }}
-        </option>
+        {% for c in campuses %}
+            <option value="{{ c.campus_name }}" {% if selected_campus == c.campus_name %}selected{% endif %}>
+                {{ c.campus_name }}
+            </option>
         {% endfor %}
     </select>
 </form>
+{% else %}
+<!-- Sub admin: fixed campus -->
+<input type="text"
+       value="{{ admin_campus }}"
+       readonly
+       class="hidden border border-[#166D3B] rounded-md px-3 py-2 text-sm h-[38px] bg-gray-100 cursor-not-allowed">
+
+<input type="hidden" name="campus" value="{{ admin_campus }}">
 {% endif %}
 
             <table class="w-full border border-[#166D3B] mt-3 rounded-lg text-[14px]">

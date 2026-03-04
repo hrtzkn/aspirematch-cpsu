@@ -64,20 +64,28 @@
                     </div>
                     <div>
                         <label for="campus" class="block text-black">Campus</label>
-                        <select id="campus" name="campus" class="bg-white block w-full p-2 border border-[#166D3B] rounded-md" required>
-                            <option value="" selected disabled>Select Campus</option>
-                            <option value="Kabankalan Main Campus">Kabankalan Main Campus</option>
-                            <option value="Candoni Campus">Candoni Campus</option>
-                            <option value="Cauayan Campus">Cauayan Campus</option>
-                            <option value="Hinigaran Campus">Hinigaran Campus</option>
-                            <option value="Hinoba-an Campus">Hinoba-an Campus</option>
-                            <option value="Ilog Campus">Ilog Campus</option>
-                            <option value="Moises Padilla Campus">Moises Padilla Campus</option>
-                            <option value="San Carlos Campus">San Carlos Campus</option>
-                            <option value="Sipalay Campus">Sipalay Campus</option>
-                            <option value="Valladolid Extension Class">Valladolid Extension Campus</option>
-                            <option value="Victorias Campus">Victorias Campus</option>
-                        </select>
+                        {% if is_super_admin %}
+                            <select id="campus" name="campus"
+                                    class="bg-white block w-full p-2 border border-[#166D3B] rounded-md"
+                                    required>
+                                <option value="" disabled selected>Select Campus</option>
+
+                                {% for c in campuses %}
+                                    <option value="{{ c.campus_name }}">
+                                        {{ c.campus_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+
+                        {% else %}
+                            <!-- Sub Admin: Fixed campus -->
+                            <input type="text"
+                                class="bg-gray-100 block w-full p-2 border border-[#166D3B] rounded-md"
+                                value="{{ admin_campus }}"
+                                readonly>
+
+                            <input type="hidden" name="campus" value="{{ admin_campus }}">
+                        {% endif %}
                     </div>
                 </div>
 
@@ -323,17 +331,9 @@
                 <div>
                     <label class="block mb-2">Campus</label>
                     <select id="editCampus" class="w-full border p-2 rounded mb-4">
-                        <option>Kabankalan Main Campus</option>
-                        <option>Candoni Campus</option>
-                        <option>Cauayan Campus</option>
-                        <option>Hinigaran Campus</option>
-                        <option>Hinoba-an Campus</option>
-                        <option>Ilog Campus</option>
-                        <option>Moises Padilla Campus</option>
-                        <option>San Carlos Campus</option>
-                        <option>Sipalay Campus</option>
-                        <option>Valladolid Extension Class</option>
-                        <option>Victorias Campus</option>
+                        {% for campus in campuses %}
+                            <option value="{{ campus.campus_name }}">{{ campus.campus_name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
@@ -534,7 +534,13 @@ function openEditAdmin(id, fullname, username, email, campus) {
     document.getElementById("editFullname").value = fullname;
     document.getElementById("editUsername").value = username;
     document.getElementById("editEmail").value = email;
-    document.getElementById("editCampus").value = campus;
+
+    const editCampusSelect = document.getElementById("editCampus");
+    if ([...editCampusSelect.options].some(opt => opt.value === campus)) {
+        editCampusSelect.value = campus;
+    } else {
+        editCampusSelect.value = "";
+    }
 
     document.getElementById("editAdminModal").classList.remove("hidden");
 }

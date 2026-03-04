@@ -82,6 +82,10 @@
   const aiResponseText = document.getElementById("aiResponseText");
   const selectedInterest = document.getElementById("selectedInterest");
 
+  const surveyAnswers = {};
+  let selectedProgram = null;
+  let currentIndex = 0;
+
   const interestPairs = [
     [
       { key: "A", text: "Operate a printing press" },
@@ -429,9 +433,8 @@
     ]
   ];
 
-  let currentIndex = 0;
-
-  preferredProgram.addEventListener("change", () => {
+  preferredProgram.addEventListener("change", function () {
+    selectedProgram = this.value;
     preferredProgramDiv.style.display = "none";
     interestDiv.style.display = "block";
     currentIndex = 0;
@@ -439,99 +442,83 @@
   });
 
   function showPair(index) {
+
     interestOptions.innerHTML = "";
 
+    // === SURVEY FINISHED ===
     if (index >= interestPairs.length) {
-      interestOptions.innerHTML = "<p class='text-green-600 font-semibold'>✅ Thank you! You have completed all questions.</p>";
-      backBtn.style.display = "none";
-      nextBtn.style.display = "none";
 
-      setTimeout(() => {
-        window.location.href = "/student/home";
-      }, 1500);
+      if (!selectedProgram) {
+        alert("Please select preferred program.");
+        return;
+      }
 
+      if (Object.keys(surveyAnswers).length !== interestPairs.length) {
+        alert("Please complete all questions.");
+        return;
+      }
+
+      submitSurvey();
       return;
     }
 
     const pair = interestPairs[index];
-    const option1 = pair[0];
-    const option2 = pair[1];
 
     const div = document.createElement("div");
     div.classList.add("mb-4");
+
     div.innerHTML = `
       <label class="block hover:bg-[#f6ebcd] border border-[#166D3B] rounded-md mb-2 p-2">
-        <input type="radio" name="interest${index}" value="${option1.key}" required>
-        ${option1.key}. ${option1.text}
+        <input type="radio" name="interest${index}" value="${pair[0].key}">
+        ${pair[0].key}. ${pair[0].text}
       </label>
+
       <label class="block hover:bg-[#f6ebcd] border border-[#166D3B] rounded-md p-2">
-        <input type="radio" name="interest${index}" value="${option2.key}">
-        ${option2.key}. ${option2.text}
+        <input type="radio" name="interest${index}" value="${pair[1].key}">
+        ${pair[1].key}. ${pair[1].text}
       </label>
     `;
+
     interestOptions.appendChild(div);
 
-    if (index === 0) {
-      backBtn.style.display = "inline-block";
-      backBtn.onclick = () => {
+    /* BACK BUTTON */
+    backBtn.style.display = "inline-block";
+    backBtn.onclick = () => {
+      if (index === 0) {
         interestDiv.style.display = "none";
         preferredProgramDiv.style.display = "block";
-      };
-    } else {
-      backBtn.style.display = "inline-block";
-      backBtn.onclick = () => {
+      } else {
         currentIndex--;
         showPair(currentIndex);
-      };
-    }
+      }
+    };
 
+    /* RADIO CHANGE */
     div.querySelectorAll("input").forEach(input => {
       input.addEventListener("change", () => {
+
         errorMsg.classList.add("hidden");
 
         const chosenLetter = input.value;
+        surveyAnswers[`pair${index + 1}`] = chosenLetter;
+
         const chosenText = input.parentNode.textContent
           .replace(`${chosenLetter}.`, "")
           .trim();
 
-        // --- NEW: fetch description directly from Python via small endpoint ---
-        fetch(`/student/get_letter_description/${chosenLetter}`)
-          .then(res => res.json())
-          .then(data => {
-            const description = data.description;
-
-            // ---- SEND TO CHATBOT ----
-
-            fetch("/student/chatbot_receive_interest", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", },
-                body: JSON.stringify({ letter: chosenLetter })
-            })
-            .then(res => res.json())
-            .then(chat => {
-                selectedInterest.textContent = `${chosenLetter} – ${chosenText}`;
-                aiResponseText.textContent = chat.reply;
-                aiResponseWrapper.classList.remove("hidden");
-            })
-           })
-            .catch(err => console.error("Chatbot error:", err));
-
-        // ---- SAVE ANSWER TO DATABASE (your existing function) ----
-        fetch("/student/save_answer", {
+        // Optional chatbot explanation
+        fetch(`/student/chatbot_receive_interest`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            pair_number: index,
-            selected_option: chosenLetter
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ letter: chosenLetter })
         })
         .then(res => res.json())
-        .then(data => {
-          console.log("Saved:", data);
+        .then(chat => {
+          selectedInterest.textContent = `${chosenLetter} – ${chosenText}`;
+          aiResponseText.textContent = chat.reply;
+          aiResponseWrapper.classList.remove("hidden");
         })
-        .catch(err => console.error("Error saving:", err));
+        .catch(err => console.error("Chatbot error:", err));
 
         setTimeout(() => {
           currentIndex++;
@@ -540,36 +527,57 @@
       });
     });
 
+    /* NEXT BUTTON */
     nextBtn.style.display = "inline-block";
     nextBtn.onclick = () => {
       const radios = document.querySelectorAll(`input[name="interest${currentIndex}"]`);
       let selected = false;
       radios.forEach(r => { if (r.checked) selected = true; });
 
-      if (selected) {
-        errorMsg.classList.add("hidden");
-        currentIndex++;
-        showPair(currentIndex);
-      } else {
+      if (!selected) {
         errorMsg.classList.remove("hidden");
       }
     };
   }
 
-  document.getElementById("preferredProgram").addEventListener("change", function() {
-      const formData = new FormData();
-      formData.append("preferredProgram", this.value);
+  function submitSurvey() {
 
-      fetch("/student/save_preferred_program", {
-          method: "POST",
-          body: formData
+    interestOptions.innerHTML =
+      "<p class='text-blue-600 font-semibold'>Submitting survey...</p>";
+
+    fetch("/student/submit_survey", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        preferred_program: selectedProgram,
+        answers: surveyAnswers
       })
-      .then(res => res.json())
-      .then(data => console.log(data));
-  });
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "success") {
+        interestOptions.innerHTML =
+          "<p class='text-green-600 font-semibold'>✅ Survey submitted successfully!</p>";
+
+        setTimeout(() => {
+          window.location.href = "/student/home";
+        }, 1500);
+
+      } else {
+        interestOptions.innerHTML =
+          `<p class='text-red-600 font-semibold'>${data.message}</p>`;
+      }
+    })
+    .catch(err => {
+      console.error("Submission error:", err);
+      interestOptions.innerHTML =
+        "<p class='text-red-600 font-semibold'>Submission failed. Please try again.</p>";
+    });
+  }
 
 </script>
-
 
 </body>
 </html>

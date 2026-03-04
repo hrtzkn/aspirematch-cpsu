@@ -6,13 +6,23 @@ function createWindow() {
 
   // Splash Screen
   const splash = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 420,
+    height: 380,
     frame: false,
-    alwaysOnTop: true
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
   });
 
   splash.loadFile("splash.html");
+
+  splash.webContents.on("did-finish-load", () => {
+    splash.webContents.send("app_version", app.getVersion());
+  });
 
   // Main Window
   const win = new BrowserWindow({

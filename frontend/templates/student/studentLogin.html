@@ -36,9 +36,9 @@
     <!-- Chat Button -->
     <div class="mt-3 md:mt-0">
         <div id="chat-button"
-             class="bg-[#166D3B] lg:bg-[#f6ebcd] text-[#166D3B]
-                    px-5 py-2 rounded-full lg:rounded-full shadow-lg
-                    cursor-pointer text-sm md:text-base
+             class="text-[#166D3B]
+                     rounded-full lg:rounded-full
+                    cursor-pointer text-3xl lg:text-3xl
                     mx-auto md:mx-0">💬
         </div>
 
@@ -135,8 +135,47 @@
 <script>
 const $ = id => document.getElementById(id);
 
+let chatInitialized = false;
+
 document.getElementById("chat-button").onclick = () => {
-    $("chat-panel").classList.toggle("hidden");
+    const panel = $("chat-panel");
+
+    // Toggle panel
+    panel.classList.toggle("hidden");
+
+    // If opening for first time → show welcome messages
+    if (!panel.classList.contains("hidden") && !chatInitialized) {
+        chatInitialized = true;
+
+        showTyping();
+        setTimeout(() => {
+            hideTyping();
+            addMessage("dan", "Hello! I'm <b>Dan</b>, your AspireMatch virtual assistant. 😊");
+        }, 800);
+
+        setTimeout(() => {
+            showTyping();
+            setTimeout(() => {
+                hideTyping();
+                addMessage("dan", "AspireMatch is a <b>Career Interest Recommendation System</b> designed to help students discover recommended programs based on their strengths and preferences.");
+            }, 1000);
+        }, 1800);
+
+        setTimeout(() => {
+            showTyping();
+            setTimeout(() => {
+                hideTyping();
+                addMessage("dan",
+                    `Would you like a quick step-by-step tour?
+                    <button data-chat-action="true"
+                            onclick="startGuide()"
+                            class="px-2 py-1 rounded border">
+                    Start Guide
+                    </button>`
+                );
+            }, 900);
+        }, 3200);
+    }
 };
 
 document.getElementById("chat-send").onclick = async () => {
@@ -386,61 +425,6 @@ const originalSend = document.getElementById("chat-send").onclick;
         }
     };
 })();
-
-window.addEventListener("load", () => {
-    openChat();
-
-    const panel = $("chat-panel");
-    if (panel && !$("aspire-help-button")) {
-
-        const closeBtn = document.createElement("button");
-        closeBtn.innerHTML = "✕";
-        closeBtn.className = "text-lg font-bold text-gray-600 hover:text-red-600 px-2";
-        closeBtn.title = "Close chat";
-        closeBtn.onclick = () => closeChat(true);
-
-        const headerContainer = document.createElement("div");
-        headerContainer.className = "flex items-center justify-between mb-2";
-
-        const title = document.createElement("div");
-        title.className = "font-semibold text-sm text-black";
-        title.textContent = "Chat with Dan";
-
-        headerContainer.appendChild(title);
-        headerContainer.appendChild(closeBtn);
-
-        panel.prepend(headerContainer);
-    }
-
-    showTyping();
-    setTimeout(() => {
-        hideTyping();
-        addMessage("dan", "Hello! I'm <b>Dan</b>, your AspireMatch virtual assistant. 😊");
-    }, 800);
-
-    setTimeout(() => {
-        showTyping();
-        setTimeout(() => {
-            hideTyping();
-            addMessage("dan", "AspireMatch is a <b>Career Interest Recommendation System</b> designed to help students discover recommended programs based on their strengths and preferences.");
-        }, 1000);
-    }, 1800);
-
-    setTimeout(() => {
-        showTyping();
-        setTimeout(() => {
-            hideTyping();
-            addMessage("dan",
-                `Would you like a quick step-by-step tour? 
-                <button data-chat-action="true"
-                        onclick="startGuide()"
-                        class="px-2 py-1 rounded border">
-                Start Guide
-                </button>`
-            );
-        }, 900);
-    }, 3200);
-});
 
 document.addEventListener("click", function (event) {
     const chatPanel = document.getElementById("chat-panel");

@@ -517,6 +517,21 @@ def dashboard():
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
+        
+    cur.execute("""
+        SELECT campus_name, campus_address 
+        FROM campus 
+        WHERE campus_name = %s
+    """, (admin_campus,))
+
+    campus_data = cur.fetchone()
+
+    if campus_data:
+        campus_name = campus_data[0]
+        campus_address = campus_data[1]
+    else:
+        campus_name = admin_campus
+        campus_address = ""
 
     cur.execute(
         "SELECT 1 FROM super_admin WHERE username = %s;",
@@ -528,9 +543,14 @@ def dashboard():
     search_query = request.args.get("q", "").strip()
 
     if is_super_admin:
-        selected_campus = request.args.get("campus")
+        # Super admin can select any campus
+        cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
+        campuses = [c[0] for c in cur.fetchall()]
+        selected_campus = request.args.get("campus", "")
     else:
+        # Sub-admin: fixed campus
         selected_campus = admin_campus
+        campuses = [admin_campus]
 
     cur.execute("""
         SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
@@ -628,8 +648,11 @@ def dashboard():
         admin_username=session["admin_username"],
         fullname=fullname,
         admin_campus=admin_campus,
+        campus_name=campus_name,
+        campus_address=campus_address,
         is_super_admin=is_super_admin,
         selected_campus=selected_campus,
+        campuses=campuses,
         total_students=total_students,
         pending_students=pending_students,
         active_admins=active_admins,
@@ -792,6 +815,44 @@ def addAdmin():
             conn.close()
             return redirect(url_for("admin.login"))
 
+    cur.execute("""
+        SELECT campus_name, campus_address 
+        FROM campus 
+        WHERE campus_name = %s
+    """, (admin_campus,))
+
+    campus_data = cur.fetchone()
+
+    if campus_data:
+        campus_name = campus_data["campus_name"]
+        campus_address = campus_data["campus_address"]
+    else:
+        campus_name = admin_campus
+        campus_address = ""
+
+    cur.close()
+    conn.close()
+
+    # Fetch campuses from campus table
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    if is_super_admin:
+        cur.execute("""
+            SELECT campus_name 
+            FROM campus 
+            ORDER BY campus_name ASC
+        """)
+        campuses = cur.fetchall()
+    else:
+        # Sub admin → only their campus
+        cur.execute("""
+            SELECT campus_name 
+            FROM campus 
+            WHERE campus_name = %s
+        """, (admin_campus,))
+        campuses = cur.fetchall()
+
     cur.close()
     conn.close()
 
@@ -907,7 +968,10 @@ def addAdmin():
         admins=admins,
         programs=programs,
         admin_campus=admin_campus,
-        deleted_admins=deleted_admins
+        deleted_admins=deleted_admins,
+        campus_name=campus_name,
+        campus_address=campus_address,
+        campuses=campuses
     )
 
 @admin_bp.route("/delete-admin", methods=["POST"])
@@ -1280,19 +1344,26 @@ def program():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
+    # Check if sub admin
     cur.execute("SELECT id, campus FROM admin WHERE username = %s", (admin_username,))
     admin = cur.fetchone()
 
+    # Check if super admin
     cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (admin_username,))
-    is_super_admin = cur.fetchone()
+    is_super_admin_row = cur.fetchone()
+    is_super_admin = bool(is_super_admin_row)
 
     if not admin and not is_super_admin:
         cur.close()
         conn.close()
         return redirect(url_for("admin.login"))
 
+    # Determine campus list
     if is_super_admin:
-        admin_campus = is_super_admin["campus"] or "ALL"
+        admin_campus = is_super_admin_row.get("campus") or "ALL"
+        cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
+        campuses = cur.fetchall()  # list of dicts: {'campus_name': '...'}
+        # Fetch programs
         if selected_campus:
             cur.execute("""
                 SELECT id, program_name, created_at, is_active, color
@@ -1308,6 +1379,7 @@ def program():
             """)
     else:
         admin_campus = admin["campus"]
+        campuses = [{"campus_name": admin_campus}]  # only their campus
         cur.execute("""
             SELECT id, program_name, created_at, is_active, color
             FROM program
@@ -1316,6 +1388,21 @@ def program():
         """, (admin_campus,))
 
     programs = cur.fetchall()
+
+    cur.execute("""
+        SELECT campus_name, campus_address 
+        FROM campus 
+        WHERE campus_name = %s
+    """, (admin_campus,))
+
+    campus_data = cur.fetchone()
+
+    if campus_data:
+        campus_name = campus_data["campus_name"]
+        campus_address = campus_data["campus_address"]
+    else:
+        campus_name = admin_campus
+        campus_address = ""
 
     cur.close()
     conn.close()
@@ -1329,7 +1416,10 @@ def program():
         is_super_admin=is_super_admin,
         programs=programs,
         admin_campus=admin_campus,
-        selected_campus=selected_campus
+        selected_campus=selected_campus,
+        campus_name=campus_name,
+        campus_address=campus_address,
+        campuses=campuses
     )
 
 @admin_bp.route("/deleteProgram", methods=["POST"])
@@ -1454,6 +1544,109 @@ def editProgram():
 
     except Exception as e:
         return jsonify(success=False, message=str(e))
+
+@admin_bp.route("/campuses", methods=["GET", "POST"])
+def campuses():
+    if "admin_username" not in session:
+        return redirect(url_for("admin.login"))
+
+    admin_username = session["admin_username"]
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    # Check super admin
+    cur.execute("SELECT * FROM super_admin WHERE username = %s", (admin_username,))
+    super_admin = cur.fetchone()
+
+    if not super_admin:
+        cur.close()
+        conn.close()
+        return redirect(url_for("admin.program"))
+    
+    # Get super admin campus info
+    admin_campus = super_admin.get("campus") if super_admin else None
+
+    if admin_campus and admin_campus != "ALL":
+        cur.execute("""
+            SELECT campus_name, campus_address
+            FROM campus
+            WHERE campus_name = %s
+        """, (admin_campus,))
+        
+        campus_data = cur.fetchone()
+
+        if campus_data:
+            campus_name = campus_data["campus_name"]
+            campus_address = campus_data["campus_address"]
+        else:
+            campus_name = admin_campus
+            campus_address = ""
+    else:
+        campus_name = "ALL CAMPUSES"
+        campus_address = ""
+
+    # ✅ ADD CAMPUS
+    if request.form.get("action") == "add":
+        campus_name = request.form.get("campus_name")
+        campus_address = request.form.get("campus_address")
+        guidance_counselor = request.form.get("guidance_counselor")
+
+        # Check duplicate campus name
+        cur.execute(
+            "SELECT id FROM campus WHERE LOWER(campus_name) = LOWER(%s)",
+            (campus_name,)
+        )
+        existing = cur.fetchone()
+
+        if existing:
+            duplicate = True
+        else:
+            cur.execute("""
+                INSERT INTO campus (campus_name, campus_address, guidance_counselor)
+                VALUES (%s, %s, %s)
+            """, (campus_name, campus_address, guidance_counselor))
+            conn.commit()
+            duplicate = False
+
+    # ✅ EDIT CAMPUS
+    elif request.form.get("action") == "edit":
+        campus_id = request.form.get("campus_id")
+        campus_name = request.form.get("campus_name")
+        campus_address = request.form.get("campus_address")
+        guidance_counselor = request.form.get("guidance_counselor")
+
+        cur.execute("""
+            UPDATE campus
+            SET campus_name = %s,
+                campus_address = %s,
+                guidance_counselor = %s
+            WHERE id = %s
+        """, (campus_name, campus_address, guidance_counselor, campus_id))
+        conn.commit()
+
+    # ✅ DELETE CAMPUS
+    elif request.form.get("action") == "delete":
+        campus_id = request.form.get("campus_id")
+
+        cur.execute("DELETE FROM campus WHERE id = %s", (campus_id,))
+        conn.commit()
+
+    # Fetch campuses
+    cur.execute("SELECT * FROM campus ORDER BY campus_name ASC")
+    campuses = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        "admin/campuses.html",
+        campuses=campuses,
+        campus_name=campus_name,
+        campus_address=campus_address,
+        is_super_admin=True,
+        duplicate=locals().get("duplicate", False)
+    )
 
 @admin_bp.route("/addParticipant", methods=["POST"])
 def addParticipant():
@@ -1696,46 +1889,49 @@ def respondents():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT username, campus FROM super_admin WHERE username = %s",
-        (username,)
-    )
+    # Check super admin
+    cur.execute("SELECT username, campus FROM super_admin WHERE username = %s", (username,))
     super_admin = cur.fetchone()
+    is_super_admin = bool(super_admin)
 
-    is_super_admin = False
-    admin_campus = None
-
-    if super_admin:
-        is_super_admin = True
+    if is_super_admin:
         admin_campus = super_admin[1]
+        # fetch all campuses for dropdown
+        cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
+        campuses = [c[0] for c in cur.fetchall()]
     else:
-        cur.execute(
-            "SELECT username, campus FROM admin WHERE username = %s",
-            (username,)
-        )
+        cur.execute("SELECT username, campus FROM admin WHERE username = %s", (username,))
         admin = cur.fetchone()
-
         if not admin:
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
-
         admin_campus = admin[1]
+        campuses = [{"campus_name": admin_campus}]  # only their campus
 
     cur.execute("""
-        SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
-        FROM student
-        ORDER BY 1 DESC;
-    """)
-    available_years = [row[0] for row in cur.fetchall()]
+        SELECT campus_name, campus_address 
+        FROM campus 
+        WHERE campus_name = %s
+    """, (admin_campus,))
 
-    selected_year = request.args.get("year", type=int) or datetime.now().year
-    search_query = request.args.get("q", "").strip()
-    status_filter = request.args.get("status", "")
+    campus_data = cur.fetchone()
+
+    if campus_data:
+        campus_name = campus_data[0]
+        campus_address = campus_data[1]
+    else:
+        campus_name = admin_campus
+        campus_address = ""
+
     selected_campus = request.args.get("campus", "")
     selected_program = request.args.get("program", "")
+    search_query = request.args.get("q", "").strip()
+    status_filter = request.args.get("status", "")
+    selected_year = request.args.get("year", type=int) or datetime.now().year
     page = request.args.get("page", 1, type=int)
 
+    # Fetch programs dynamically based on campus
     if is_super_admin:
         if selected_campus:
             cur.execute("""
@@ -1866,9 +2062,11 @@ def respondents():
     return render_template(
         "admin/respondents.html",
         admin_username=username,
+        campus_name=campus_name,
+        campus_address=campus_address,
         admin_campus=admin_campus,
         is_super_admin=is_super_admin,
-        available_years=available_years,
+        available_years=[selected_year],
         year=selected_year,
         students=students_paginated,
         search_query=search_query,
@@ -1877,7 +2075,8 @@ def respondents():
         selected_program=selected_program,
         programs=programs,
         page=page,
-        total_pages=total_pages
+        total_pages=total_pages,
+        campuses=campuses
     )
 
 @admin_bp.route("/adminSurveyResult")
@@ -1891,38 +2090,28 @@ def adminSurveyResult():
 
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    cur.execute(
-        "SELECT fullname, campus FROM super_admin WHERE username = %s",
-        (admin_username,)
-    )
-    super_admin = cur.fetchone()
 
-    is_super_admin = False
-    admin_fullname = None
-    admin_campus = None
+    # --- Get admin info ---
+    cur.execute("SELECT fullname, campus FROM super_admin WHERE username = %s", (admin_username,))
+    super_admin = cur.fetchone()
+    is_super_admin = bool(super_admin)
 
     if super_admin:
-        is_super_admin = True
         admin_fullname = super_admin[0]
         admin_campus = super_admin[1]
     else:
-        cur.execute(
-            "SELECT fullname, campus FROM admin WHERE username = %s",
-            (admin_username,)
-        )
+        cur.execute("SELECT fullname, campus FROM admin WHERE username = %s", (admin_username,))
         admin = cur.fetchone()
-
         if not admin:
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
-
         admin_fullname = admin[0]
         admin_campus = admin[1]
 
     cur.execute("""
-        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo, 
+        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+               c.campus_name, c.campus_address, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
                sa.pair6, sa.pair7, sa.pair8, sa.pair9, sa.pair10,
@@ -1944,6 +2133,7 @@ def adminSurveyResult():
                sa.pair86
         FROM student s
         LEFT JOIN student_survey_answer sa ON s.exam_id = sa.exam_id
+        LEFT JOIN campus c ON s.campus = c.campus_name
         WHERE s.exam_id = %s;
     """, (exam_id,))
     
@@ -1964,10 +2154,17 @@ def adminSurveyResult():
         "created_at": row[2],
         "campus": row[3],
         "photo": row[4],
-        "preferred_program": row[5],
-        "ai_explanation": format_ai_explanation_for_pdf(row[6]),
-        "answers": [row[i] for i in range(7, 93)]
+        "campus_name": row[5],
+        "campus_address": row[6],
+        "guidance_counselor": row[7],
+        "preferred_program": row[8],
+        "ai_explanation": format_ai_explanation_for_pdf(row[9]),
+        "answers": [row[i] for i in range(10, 96)]
     }
+
+    # --- Fetch all campuses and addresses ---
+    cur.execute("SELECT campus_name, campus_address FROM campus")
+    campus_info = {c[0]: c[1] for c in cur.fetchall()}
 
     answers_clean = student_results["answers"]
     preferred = student_results["preferred_program"]
@@ -2012,13 +2209,17 @@ def adminSurveyResult():
     return render_template(
         "admin/adminSurveyResult.html",
         admin_username=session["admin_username"],
-        admin_fullname=admin_fullname,
+        guidance_counselor=student_results["guidance_counselor"],
+        campus_name=student_results["campus_name"],
+        campus_address=student_results["campus_address"],
         admin_campus=admin_campus,
         is_super_admin=is_super_admin,
         student_results=student_results,
         student_campus=student_results["campus"],
+        campus_info=campus_info,
         top_letters=top_letters,
         letter_descriptions=letter_descriptions,
+        ai_explanation=student_results["ai_explanation"],
         match_status=match_status,
         predicted_programs=predicted_programs,
         year=year
@@ -2029,12 +2230,33 @@ def download_result(exam_id):
     if not exam_id:
         flash("Invalid request.")
         return redirect(url_for('admin.dashboard'))
+    
+    admin_username = session["admin_username"]
 
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # --- Get admin info ---
+    cur.execute("SELECT fullname, campus FROM super_admin WHERE username = %s", (admin_username,))
+    super_admin = cur.fetchone()
+    is_super_admin = bool(super_admin)
+
+    if super_admin:
+        admin_fullname = super_admin[0]
+        admin_campus = super_admin[1]
+    else:
+        cur.execute("SELECT fullname, campus FROM admin WHERE username = %s", (admin_username,))
+        admin = cur.fetchone()
+        if not admin:
+            cur.close()
+            conn.close()
+            return redirect(url_for("admin.login"))
+        admin_fullname = admin[0]
+        admin_campus = admin[1]
+
     cur.execute("""
         SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+               c.campus_name, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
                sa.pair6, sa.pair7, sa.pair8, sa.pair9, sa.pair10,
@@ -2056,10 +2278,14 @@ def download_result(exam_id):
                sa.pair86
         FROM student s
         LEFT JOIN student_survey_answer sa ON s.exam_id = sa.exam_id
+        LEFT JOIN campus c ON s.campus = c.campus_name
         WHERE s.exam_id = %s;
     """, (exam_id,))
 
     row = cur.fetchone()
+
+    if not row:
+        return "Survey results not found", 404
 
     created_at = row[2]
 
@@ -2067,19 +2293,21 @@ def download_result(exam_id):
     end_year = start_year + 1
     year = f"{start_year}-{end_year}"
 
-    if not row:
-        return "Survey results not found", 404
-
     student_data = {
         "exam_id": row[0],
         "fullname": row[1],
         "created_at": row[2],
         "campus": row[3],
         "photo": row[4],
-        "preferred_program": row[5],
-        "ai_explanation": format_ai_explanation_for_pdf(row[6]),
-        "answers": [row[i] for i in range(7, 93)]
+        "campus_name": row[5],
+        "guidance_counselor": row[6],
+        "preferred_program": row[7],
+        "ai_explanation": format_ai_explanation_for_pdf(row[8]),
+        "answers": [row[i] for i in range(9, 95)]
     }
+    
+    cur.execute("SELECT campus_name, campus_address FROM campus")
+    campus_info = {c[0]: c[1] for c in cur.fetchall()}
 
     answers_clean = [a for a in student_data["answers"] if a]
     letter_counts = Counter(answers_clean)
@@ -2115,17 +2343,24 @@ def download_result(exam_id):
 
     student_photo_base64 = student_photo_to_base64(student_data.get("photo"))
 
+    cur.execute("SELECT campus_name, campus_address FROM campus")
+    campus_info = {c[0]: c[1] for c in cur.fetchall()}
+
     cpsu_logo = image_to_base64("cpsulogo.png")
     bagong_logo = image_to_base64("bagong-pilipinas-logo.png")
     safe_logo = image_to_base64("logo.png")
 
     html = render_template(
         "admin/adminSurveyResultPDF.html",
+        guidance_counselor=student_data["guidance_counselor"],
+        campus_name=student_data["campus_name"],
         student_data=student_data,
         top_letters=top_letters,
         match_status=match_status,
         student_campus=student_data["campus"],
+        campus_info=campus_info,
         letter_descriptions=letter_descriptions,
+        ai_explanation=student_data["ai_explanation"],
         year=year,
         predicted_programs=predicted_programs,
         cpsu_logo_base64=cpsu_logo,
@@ -2138,7 +2373,7 @@ def download_result(exam_id):
     HTML(string=html, base_url=current_app.root_path).write_pdf(pdf_io)
     pdf_io.seek(0)
 
-    filename = f"Career_Survey_Result_{student_data['fullname']}.pdf"
+    filename = f"Career_Survey_Result_{student_data['exam_id']}_{student_data['fullname']}.pdf"
 
     return send_file(
         pdf_io,
@@ -2159,37 +2394,46 @@ def adminInventory():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    cur.execute("""
-        SELECT id, campus
-        FROM super_admin
-        WHERE username = %s
-    """, (username,))
-    admin = cur.fetchone()
+    # Check super admin
+    cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (username,))
+    super_admin_row = cur.fetchone()
+    is_super_admin = bool(super_admin_row)
 
-    is_super_admin = False
-    admin_campus = None
-
-    if admin:
-        is_super_admin = True
-        admin_id, admin_campus = admin
+    if is_super_admin:
+        admin_campus = super_admin_row["campus"]
+        # Fetch all campuses for dropdown
+        cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
+        campuses = cur.fetchall()
     else:
-        cur.execute("""
-            SELECT id, campus
-            FROM admin
-            WHERE username = %s
-        """, (username,))
-        admin = cur.fetchone()
-
-        if not admin:
+        # Sub admin
+        cur.execute("SELECT id, campus FROM admin WHERE username = %s", (username,))
+        admin_row = cur.fetchone()
+        if not admin_row:
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
+        admin_campus = admin_row["campus"]
+        campuses = [{"campus_name": admin_campus}]
 
-        admin_id, admin_campus = admin
+    cur.execute("""
+        SELECT campus_name, campus_address 
+        FROM campus 
+        WHERE campus_name = %s
+    """, (admin_campus,))
+
+    campus_data = cur.fetchone()
+
+    if campus_data:
+        campus_name = campus_data["campus_name"]
+        campus_address = campus_data["campus_address"]
+    else:
+        campus_name = admin_campus
+        campus_address = ""
 
     selected_campus = request.args.get("campus", "")
     search_query = request.args.get("q", "")
     page = request.args.get("page", 1, type=int)
+    sort = request.args.get("sort", "income_asc")
 
     cur.execute("""
         SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int 
@@ -2232,8 +2476,6 @@ def adminInventory():
 
     cur.execute(query, params)
     students = cur.fetchall()
-
-    sort = request.args.get("sort", "income_asc")
 
     classified_students = []
     for row in students:
@@ -2294,7 +2536,10 @@ def adminInventory():
         page=page,
         total_pages=total_pages,
         sort=sort,
-        selected_campus=selected_campus
+        selected_campus=selected_campus,
+        campuses=campuses,
+        campus_address=campus_address,
+        campus_name=campus_name
     )
 
 @admin_bp.route("/adminInventoryResult")
@@ -2312,11 +2557,8 @@ def adminInventoryResult():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    cur.execute("""
-        SELECT id, campus
-        FROM super_admin
-        WHERE username = %s
-    """, (username,))
+    # --- Get admin info ---
+    cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (username,))
     admin = cur.fetchone()
 
     is_super_admin = False
@@ -2326,19 +2568,28 @@ def adminInventoryResult():
         is_super_admin = True
         admin_id, admin_campus = admin
     else:
-        cur.execute("""
-            SELECT id, campus
-            FROM admin
-            WHERE username = %s
-        """, (username,))
+        cur.execute("SELECT id, campus FROM admin WHERE username = %s", (username,))
         admin = cur.fetchone()
-
         if not admin:
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
-
         admin_id, admin_campus = admin
+
+    cur.execute("""
+        SELECT campus_name, campus_address 
+        FROM campus 
+        WHERE campus_name = %s
+    """, (admin_campus,))
+
+    campus_data = cur.fetchone()
+
+    if campus_data:
+        campus_name = campus_data["campus_name"]
+        campus_address = campus_data["campus_address"]
+    else:
+        campus_name = admin_campus
+        campus_address = ""
 
     cur.execute("""
         SELECT 
@@ -2412,6 +2663,9 @@ def adminInventoryResult():
     if info and info["photo"]:
         student_photo_base64 = student_photo_to_base64(info["photo"])
 
+    cur.execute("SELECT campus_name, campus_address FROM campus")
+    campus_info = {c[0]: c[1] for c in cur.fetchall()}
+
     cur.execute("""
         SELECT reasons, other_reason
         FROM cpsu_enrollment_reason
@@ -2453,7 +2707,10 @@ def adminInventoryResult():
         selected_reasons=selected_reasons,
         other_reason=other_reason,
         other_schools_selected=other_schools_selected,
-        other_school=other_school
+        other_school=other_school,
+        campus_info=campus_info,
+        campus_address=campus_address,
+        campus_name=campus_name
     )
 
 @admin_bp.route('/download_admin_inventory_pdf/<int:student_id>')
@@ -2501,6 +2758,13 @@ def download_admin_inventory_pdf(student_id):
     if not info:
         return "Student Inventory results not found.", 404
 
+    student_photo_base64 = None
+    if info and info["photo"]:
+        student_photo_base64 = student_photo_to_base64(info["photo"])
+
+    cur.execute("SELECT campus_name, campus_address FROM campus")
+    campus_info = {c[0]: c[1] for c in cur.fetchall()}
+
     cur.execute("""
         SELECT reasons, other_reason
         FROM cpsu_enrollment_reason
@@ -2534,6 +2798,8 @@ def download_admin_inventory_pdf(student_id):
         other_reason=other_reason,
         other_schools_selected=other_schools_selected,
         other_school=other_school,
+        student_photo_base64=student_photo_base64,
+        campus_info=campus_info,
         cpsu_logo_base64=cpsu_logo_base64
     )
 
@@ -2718,33 +2984,41 @@ def interviewList():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    cur.execute("""
-        SELECT id, campus
-        FROM super_admin
-        WHERE username = %s
-    """, (username,))
-    admin = cur.fetchone()
+    # Check super admin
+    cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (username,))
+    super_admin_row = cur.fetchone()
+    is_super_admin = bool(super_admin_row)
 
-    is_super_admin = False
-    admin_campus = None
-
-    if admin:
-        is_super_admin = True
-        admin_id, admin_campus = admin
+    if is_super_admin:
+        admin_campus = super_admin_row["campus"]
+        # Fetch all campuses for dropdown
+        cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
+        campuses = cur.fetchall()
     else:
-        cur.execute("""
-            SELECT id, campus
-            FROM admin
-            WHERE username = %s
-        """, (username,))
-        admin = cur.fetchone()
-
-        if not admin:
+        # Sub admin
+        cur.execute("SELECT id, campus FROM admin WHERE username = %s", (username,))
+        admin_row = cur.fetchone()
+        if not admin_row:
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
+        admin_campus = admin_row["campus"]
+        campuses = [{"campus_name": admin_campus}]
 
-        admin_id, admin_campus = admin
+    cur.execute("""
+        SELECT campus_name, campus_address 
+        FROM campus 
+        WHERE campus_name = %s
+    """, (admin_campus,))
+
+    campus_data = cur.fetchone()
+
+    if campus_data:
+        campus_name = campus_data["campus_name"]
+        campus_address = campus_data["campus_address"]
+    else:
+        campus_name = admin_campus
+        campus_address = ""
 
     selected_campus = request.args.get("campus", "")
     search_query = request.args.get("q", "")
@@ -2874,7 +3148,10 @@ def interviewList():
         search_query=search_query,
         page=page,
         total_pages=total_pages,
-        is_super_admin=is_super_admin
+        is_super_admin=is_super_admin,
+        campuses=campuses,
+        campus_name=campus_name,
+        campus_address=campus_address
     )
 
 @admin_bp.route("/save_schedule", methods=["POST"])
@@ -2894,32 +3171,44 @@ def save_schedule():
     cur = conn.cursor()
 
     try:
-        cur.execute(
-            "SELECT campus FROM admin WHERE username = %s",
-            (admin_username,)
-        )
-        admin_campus = cur.fetchone()[0]
+        cur.execute("""
+            SELECT campus FROM admin WHERE username = %s
+            UNION
+            SELECT campus FROM super_admin WHERE username = %s
+        """, (admin_username, admin_username))
 
-        cur.execute(
-            "SELECT 1 FROM schedules WHERE schedule_date = %s",
-            (schedule_date,)
-        )
+        result = cur.fetchone()
+
+        if not result:
+            return jsonify({
+                "status": "error",
+                "error": "Admin campus not found."
+            }), 400
+
+        admin_campus = result[0]
+
+        cur.execute("""
+            SELECT 1 FROM schedules 
+            WHERE schedule_date = %s AND campus = %s
+        """, (schedule_date, admin_campus))
+
         if cur.fetchone():
             return jsonify({
                 "status": "error",
-                "error": "A schedule already exists for this date."
+                "error": "A schedule already exists for this date in your campus."
             }), 400
 
         cur.execute("""
             INSERT INTO schedules
-                (schedule_date, start_time, end_time, slot_count, admin_username)
-            VALUES (%s, %s, %s, %s, %s)
+                (schedule_date, start_time, end_time, slot_count, admin_username, campus)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             schedule_date,
             start_time,
             end_time,
             slot_count,
-            admin_username
+            admin_username,
+            admin_campus
         ))
 
         cur.execute("""
@@ -2928,7 +3217,7 @@ def save_schedule():
         """, (
             admin_username,
             admin_campus,
-            f"Added new interview date '{schedule_date}'"
+            f"Added new interview date '{schedule_date}' for campus '{admin_campus}'"
         ))
 
         conn.commit()
@@ -3082,6 +3371,37 @@ def visualization():
     else:
         all_years_data = [fetch_data_for_year(int(selected_year), selected_gender)]
 
+    # Determine which campus to fetch details for
+    if is_super_admin:
+        if selected_campus:
+            campus_to_fetch = selected_campus
+        elif admin_campus and admin_campus != "ALL":
+            campus_to_fetch = admin_campus
+        else:
+            campus_to_fetch = None
+    else:
+        campus_to_fetch = admin_campus
+
+    # Fetch campus name and address
+    if campus_to_fetch:
+        cur.execute("""
+            SELECT campus_name, campus_address
+            FROM campus
+            WHERE campus_name = %s
+        """, (campus_to_fetch,))
+        
+        campus_data = cur.fetchone()
+        
+        if campus_data:
+            campus_name = campus_data[0]
+            campus_address = campus_data[1]
+        else:
+            campus_name = campus_to_fetch
+            campus_address = ""
+    else:
+        campus_name = "ALL CAMPUSES"
+        campus_address = ""
+
     cur.close()
     conn.close()
 
@@ -3097,7 +3417,9 @@ def visualization():
         gender=selected_gender,
         all_years_data=all_years_data,
         all_programs=all_programs,
-        letter_descriptions=letter_descriptions
+        letter_descriptions=letter_descriptions,
+        campus_name=campus_name,
+        campus_address=campus_address
     )
 
 @admin_bp.route("/adminProfile", methods=["GET", "POST"])
@@ -3137,6 +3459,26 @@ def adminProfile():
             return redirect(url_for("admin.login"))
 
     admin_fullname, admin_username, admin_email, admin_campus = admin
+
+    # Fetch campus details
+    if admin_campus and admin_campus != "ALL":
+        cur.execute("""
+            SELECT campus_name, campus_address
+            FROM campus
+            WHERE campus_name = %s
+        """, (admin_campus,))
+        
+        campus_data = cur.fetchone()
+        
+        if campus_data:
+            campus_name = campus_data[0]
+            campus_address = campus_data[1]
+        else:
+            campus_name = admin_campus
+            campus_address = ""
+    else:
+        campus_name = "ALL CAMPUSES"
+        campus_address = ""
 
     if request.method == "POST":
         fullname = request.form.get("fullname")
@@ -3182,7 +3524,9 @@ def adminProfile():
         admin=admin,
         admin_username=username,
         admin_campus=admin_campus,
-        is_super_admin=is_super_admin
+        is_super_admin=is_super_admin,
+        campus_name=campus_name,
+        campus_address=campus_address
     )
 
 @admin_bp.route("/verify-email-change", methods=["GET", "POST"])

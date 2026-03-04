@@ -77,63 +77,13 @@
                             </div>
 
                             
-                            <div class="text-green-600 font-bold uppercase
-                                        text-[7px] lg:text-base">
-                                {{ student_campus }}
+                            <div class="text-green-600 font-bold uppercase text-[7px] lg:text-base">
+                                {{ campus_name }}
                             </div>
-                            {% if student_campus == 'San Carlos Campus' %}
+
                             <div class="text-black text-[5px] lg:text-xs">
-                                San Carlos City, Negros Occidental 6127
+                                {{ campus_address }}
                             </div>
-                            {% elif student_campus == 'Candoni Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Candoni, Negros Occidental 6110
-                            </div>
-                            {% elif student_campus == 'Cauayan Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Poblacion Cauayan, Negros Occidental 6112
-                            </div>
-                            {% elif student_campus == 'Moises Padilla Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Moises Padilla, Negros Occidental 6132
-                            </div>
-                            {% elif student_campus == 'Kabankalan Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Kabanlakan City, Negros Occidental 6111
-                            </div>
-                            {% elif student_campus == 'Hinigaran  Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Hinigaran, Negros Occidental 6119
-                            </div>
-                            {% elif student_campus == 'Hinoba-an Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Hinoba-an, Negros Occidental 6114
-                            </div>
-                            {% elif student_campus == 'Sipalay Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                               Sipalay City, Negros Occidental 6113
-                            </div>
-                            {% elif student_campus == 'Victorias Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Vinctorias City, Negros Occidental 6119
-                            </div>
-                            {% elif student_campus == 'Valladolid Extension Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Valladolid, Negros Occidental
-                            </div>
-                            {% elif student_campus == 'Ilog  Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Municipality of Ilog, Negros Occidental 6109
-                            </div>
-                            {% elif student_campus == 'Victorias Campus' %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Vinctorias City, Negros Occidental 6119
-                            </div>
-                            {% else %}
-                            <div class="text-black text-[5px] lg:text-xs">
-                                Campus Address, Postcode
-                            </div>
-                            {% endif %}
                         </td>
                     </tr>
                   </table>
@@ -236,8 +186,8 @@
                 </div>
 
                 <div class="mt-4 lg:mt-12 text-left ml-8 mb-4 lg:mb-8">
-                    <h2 class="text-[6px] lg:text-sm font-bold text-left mb-1"><span class="border-b border-black pb-1 inline-block">DANILO A. ROBLICO JR. MAED-GC, RGC, LPT</span></h2>
-                    <h3 class="text-[8px] lg:text-sm text-left ml-6 lg:ml-20">Guidance Counselor</h3>
+                    <h2 class="text-[6px] lg:text-lg font-bold text-left mb-1"><span class="border-b border-black pb-1 inline-block">{{ guidance_counselor }}</span></h2>
+                    <h3 class="text-[8px] lg:text-sm text-left ml-6 lg:ml-6">Guidance Counselor</h3>
                 </div>
             </div>
 

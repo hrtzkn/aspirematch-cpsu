@@ -122,13 +122,6 @@
             onchange="this.form.submit()">
         <option value="">All Campuses</option>
 
-        {% set campuses = [
-            'Kabankalan Main Campus', 'Candoni Campus', 'Cauayan Campus',
-            'Hinigaran Campus', 'Hinoba-an Campus', 'Ilog Campus',
-            'Moises Padilla Campus', 'San Carlos Campus', 'Sipalay Campus',
-            'Valladolid Extension Campus', 'Victorias Campus'
-        ] %}
-
         {% for campus in campuses %}
             <option value="{{ campus }}"
                 {% if selected_campus == campus %}selected{% endif %}>

@@ -216,6 +216,60 @@ If you did not request this, please ignore this email."""
     except Exception as e:
         current_app.logger.error(f"❌ SendGrid exception: {e}")
         return False
+
+def send_otp_email(email, otp):
+    import os
+    import base64
+    from email.mime.text import MIMEText
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+    from flask import current_app
+
+    try:
+        creds = Credentials(
+            None,
+            refresh_token=os.getenv("GMAIL_REFRESH_TOKEN"),
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=os.getenv("GMAIL_CLIENT_ID"),
+            client_secret=os.getenv("GMAIL_CLIENT_SECRET"),
+        )
+
+        creds.refresh(Request())
+
+        service = build("gmail", "v1", credentials=creds)
+
+        message = MIMEText(
+            f"""Hello,
+
+Your AspireMatch OTP is:
+
+{otp}
+
+This code expires in 5 minutes.
+
+If you did not request this, ignore this message.
+
+AspireMatch Team"""
+        )
+
+        message["to"] = email
+        message["from"] = os.getenv("GMAIL_USER")
+        message["subject"] = "Your AspireMatch Login OTP"
+
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+        service.users().messages().send(
+            userId="me",
+            body={"raw": raw}
+        ).execute()
+
+        current_app.logger.info("✅ OTP sent via Gmail API")
+        return True
+
+    except Exception as e:
+        current_app.logger.error(f"❌ Gmail API error: {e}")
+        return False
     
 def generate_pdf(html):
     from weasyprint import HTML
@@ -279,8 +333,8 @@ def studentlogin():
 
         # Check student by exam_id
         cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s AND email = %s",
-            (exam_id, email)
+            "SELECT id, email FROM student WHERE exam_id = %s",
+            (exam_id,)
         )
         student = cur.fetchone()
 
@@ -331,7 +385,94 @@ def studentlogin():
         )
 
     return render_template("student/studentLogin.html")
+"""
+@student_bp.route("/login", methods=["GET", "POST"])
+def studentlogin():
+    error = None
+    exam_error = False
+    email_error = False
 
+    if request.method == "POST":
+        exam_id = request.form["exam_id"]
+        email = request.form["email"]
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Check if student exists
+        cur.execute(
+            "SELECT id FROM student WHERE exam_id = %s AND email = %s",
+            (exam_id, email)
+        )
+        student = cur.fetchone()
+
+        if not student:
+            exam_error = True
+            error = "Invalid Examination ID"
+
+            cur.close()
+            conn.close()
+
+            return render_template(
+                "student/studentLogin.html",
+                error=error,
+                exam_error=exam_error,
+                email_error=email_error,
+                exam_id=exam_id,
+                email=email
+            )
+
+        student_id = student[0]
+
+        # 🔎 CHECK if student already answered survey
+        cur.execute(
+            "SELECT 1 FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
+            (exam_id, student_id)
+        )
+        survey_row = cur.fetchone()
+
+        # ✅ IF survey already exists → NO OTP
+        if survey_row:
+            session["student_id"] = student_id
+            session["exam_id"] = exam_id
+
+            cur.close()
+            conn.close()
+
+            return redirect(url_for("student.home"))
+
+        # ❗ IF survey does NOT exist → REQUIRE OTP
+        otp = generate_otp()
+
+        session["otp"] = otp
+        session["otp_exam_id"] = exam_id
+        session["otp_email"] = email
+        session["otp_time"] = time.time()
+
+        sent = send_otp_email(email, otp)
+
+        if not sent:
+            error = "Unable to send OTP. Please try again later."
+
+            cur.close()
+            conn.close()
+
+            return render_template(
+                "student/studentLogin.html",
+                error=error,
+                exam_error=False,
+                email_error=False,
+                exam_id=exam_id,
+                email=email
+            )
+
+        cur.close()
+        conn.close()
+
+        return redirect(url_for("student.verify"))
+
+    return render_template("student/studentLogin.html")
+"""
 @student_bp.route("/verify", methods=["GET", "POST"])
 def verify():
     error = None
@@ -624,15 +765,36 @@ def choose_schedule():
 
 @student_bp.route("/get_schedules")
 def get_schedules():
+    if "student_id" not in session:
+        return jsonify([])
+
+    student_id = session["student_id"]
+
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Get student's campus
+    cur.execute("""
+        SELECT campus FROM student WHERE id = %s
+    """, (student_id,))
+    result = cur.fetchone()
+
+    if not result:
+        cur.close()
+        conn.close()
+        return jsonify([])
+
+    student_campus = result[0]
+
+    # Only get schedules from same campus
     cur.execute("""
         SELECT id, schedule_date, start_time, end_time, slot_count
         FROM schedules
         WHERE slot_count > 0
+        AND campus = %s
         ORDER BY schedule_date ASC
-    """)
+    """, (student_campus,))
+
     rows = cur.fetchall()
 
     schedules = []
@@ -649,34 +811,81 @@ def get_schedules():
     conn.close()
     return jsonify(schedules)
 
-
 @student_bp.route("/save_student_schedule", methods=["POST"])
 def save_student_schedule():
+    if "student_id" not in session:
+        return jsonify({"success": False, "message": "Unauthorized"})
+
     data = request.json
     schedule_id = data.get("schedule_id")
-    student_id = session.get("student_id")
+    student_id = session["student_id"]
 
-    if not student_id or not schedule_id:
-        return jsonify({"success": False, "message": "Missing data"})
+    if not schedule_id:
+        return jsonify({"success": False, "message": "Missing schedule"})
 
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Get student campus
     cur.execute("""
-        SELECT 1 FROM student_schedules WHERE student_id = %s AND schedule_id = %s
+        SELECT campus FROM student WHERE id = %s
+    """, (student_id,))
+    student_row = cur.fetchone()
+
+    if not student_row:
+        cur.close()
+        conn.close()
+        return jsonify({"success": False, "message": "Student not found"})
+
+    student_campus = student_row[0]
+
+    # Check if schedule belongs to same campus AND has slot
+    cur.execute("""
+        SELECT campus, slot_count
+        FROM schedules
+        WHERE id = %s
+    """, (schedule_id,))
+    schedule_row = cur.fetchone()
+
+    if not schedule_row:
+        cur.close()
+        conn.close()
+        return jsonify({"success": False, "message": "Schedule not found"})
+
+    schedule_campus, slot_count = schedule_row
+
+    if schedule_campus != student_campus:
+        cur.close()
+        conn.close()
+        return jsonify({"success": False, "message": "Invalid campus schedule"})
+
+    if slot_count <= 0:
+        cur.close()
+        conn.close()
+        return jsonify({"success": False, "message": "No available slots"})
+
+    # Check duplicate selection
+    cur.execute("""
+        SELECT 1 FROM student_schedules 
+        WHERE student_id = %s AND schedule_id = %s
     """, (student_id, schedule_id))
+
     if cur.fetchone():
         cur.close()
         conn.close()
         return jsonify({"success": False, "message": "Already selected"})
 
+    # Insert schedule
     cur.execute("""
         INSERT INTO student_schedules (student_id, schedule_id, created_at)
         VALUES (%s, %s, NOW())
     """, (student_id, schedule_id))
 
+    # Decrease slot safely
     cur.execute("""
-        UPDATE schedules SET slot_count = slot_count - 1 WHERE id = %s
+        UPDATE schedules
+        SET slot_count = slot_count - 1
+        WHERE id = %s
     """, (schedule_id,))
 
     conn.commit()
@@ -734,108 +943,58 @@ def surveyForm():
         programs=programs
     )
 
-@student_bp.route("/save_answer", methods=["POST"])
-def save_answer():
-    if "exam_id" not in session or "student_id" not in session:
+@student_bp.route("/submit_survey", methods=["POST"])
+def submit_survey():
+    if "student_id" not in session or "exam_id" not in session:
         return jsonify({"status": "error", "message": "Not logged in"}), 403
 
     data = request.json
-    pair_number = data.get("pair_number")
-    selected_option = data.get("selected_option")
+    preferred_program = data.get("preferred_program")
+    answers = data.get("answers")
 
     TOTAL_PAIRS = 86
 
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
+    if not preferred_program:
+        return jsonify({"status": "error", "message": "Preferred program required"}), 400
 
-        column_name = f"pair{pair_number + 1}"
-
-        cur.execute(
-            "SELECT id FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
-            (session["exam_id"], session["student_id"])
-        )
-        row = cur.fetchone()
-
-        if row:
-            cur.execute(
-                f"UPDATE student_survey_answer SET {column_name} = %s WHERE exam_id = %s AND student_id = %s",
-                (selected_option, session["exam_id"], session["student_id"])
-            )
-        else:
-            cur.execute(
-                f"INSERT INTO student_survey_answer (exam_id, student_id, {column_name}) VALUES (%s, %s, %s)",
-                (session["exam_id"], session["student_id"], selected_option)
-            )
-
-        if pair_number == TOTAL_PAIRS - 1:
-            cur.execute("""
-                SELECT 1 FROM notifications
-                WHERE student_id = %s AND exam_id = %s
-                  AND message = %s
-            """, (
-                session["student_id"],
-                session["exam_id"],
-                "Career Interest Survey Completed!"
-            ))
-
-            if not cur.fetchone():
-                cur.execute("""
-                    INSERT INTO notifications (student_id, exam_id, message, is_read)
-                    VALUES (%s, %s, %s, FALSE)
-                """, (
-                    session["student_id"],
-                    session["exam_id"],
-                    "Career Interest Survey Completed!"
-                ))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify({"status": "success", "message": "Answer saved!"})
-
-    except Exception as e:
-        print("Error saving answer:", e)
-        return jsonify({"status": "error", "message": "Failed to save answer"}), 500
-
-@student_bp.route("/save_preferred_program", methods=["POST"])
-def save_preferred_program():
-    if "exam_id" not in session or "student_id" not in session:
-        return jsonify({"status": "error", "message": "Not logged in"}), 403
-
-    preferred_program = request.form.get("preferredProgram")
+    if not answers or len(answers) != TOTAL_PAIRS:
+        return jsonify({"status": "error", "message": "Survey incomplete"}), 400
 
     try:
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute(
-            "SELECT id FROM student_survey_answer WHERE exam_id = %s AND student_id = %s",
-            (session["exam_id"], session["student_id"])
-        )
-        row = cur.fetchone()
+        columns = ", ".join(answers.keys())
+        placeholders = ", ".join(["%s"] * len(answers))
+        values = list(answers.values())
 
-        if row:
-            cur.execute(
-                "UPDATE student_survey_answer SET preferred_program = %s WHERE exam_id = %s AND student_id = %s",
-                (preferred_program, session["exam_id"], session["student_id"])
-            )
-        else:
-            cur.execute(
-                "INSERT INTO student_survey_answer (exam_id, student_id, preferred_program) VALUES (%s, %s, %s)",
-                (session["exam_id"], session["student_id"], preferred_program)
-            )
+        cur.execute(
+            f"""
+            INSERT INTO student_survey_answer
+            (exam_id, student_id, {columns}, preferred_program)
+            VALUES (%s, %s, {placeholders}, %s)
+            """,
+            (session["exam_id"], session["student_id"], *values, preferred_program)
+        )
+
+        cur.execute("""
+            INSERT INTO notifications (student_id, exam_id, message, is_read)
+            VALUES (%s, %s, %s, FALSE)
+        """, (
+            session["student_id"],
+            session["exam_id"],
+            "Career Interest Survey Completed!"
+        ))
 
         conn.commit()
         cur.close()
         conn.close()
 
-        return jsonify({"status": "success", "message": "Preferred program saved!"})
+        return jsonify({"status": "success"})
 
     except Exception as e:
-        print("Error saving preferred program:", e)
-        return jsonify({"status": "error", "message": "Failed to save program"}), 500
+        print("Error:", e)
+        return jsonify({"status": "error", "message": "Failed to save survey"}), 500
     
 @student_bp.route("/notification")
 def notification():
@@ -1048,7 +1207,8 @@ def surveyResult():
     survey_result_unlocked, inventory_result_unlocked = cur.fetchone()
 
     cur.execute("""
-        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo, 
+        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+               c.campus_name, c.campus_address, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
                sa.pair6, sa.pair7, sa.pair8, sa.pair9, sa.pair10,
@@ -1071,6 +1231,8 @@ def surveyResult():
         FROM student s
         LEFT JOIN student_survey_answer sa 
             ON s.exam_id = sa.exam_id
+        LEFT JOIN campus c
+            ON s.campus = c.campus_name
         WHERE s.id = %s;
     """, (student_id,))
     
@@ -1091,9 +1253,12 @@ def surveyResult():
         "created_at": row[2],
         "campus": row[3],
         "photo": row[4],
-        "preferred_program": row[5],
-        "ai_explanation": row[6],
-        "answers": [row[i] for i in range(7, 93)]
+        "campus_name": row[5],
+        "campus_address": row[6],
+        "guidance_counselor": row[7],
+        "preferred_program": row[8],
+        "ai_explanation": format_ai_explanation_for_pdf(row[9]),
+        "answers": [row[i] for i in range(10, 96)]
     }
 
     answers_clean = student_results["answers"]
@@ -1140,7 +1305,9 @@ def surveyResult():
         "student/surveyResult.html",
         year=year,
         student_results=student_results,
-        student_campus=student_results["campus"],
+        guidance_counselor=student_results["guidance_counselor"],
+        campus_name=student_results["campus_name"],
+        campus_address=student_results["campus_address"],
         top_letters=top_letters,
         letter_descriptions=letter_descriptions,
         match_status=match_status,
@@ -1197,6 +1364,7 @@ def download_pdf(student_id):
 
     cur.execute("""
         SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+               c.campus_name, c.campus_address, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
                sa.pair6, sa.pair7, sa.pair8, sa.pair9, sa.pair10,
@@ -1217,7 +1385,10 @@ def download_pdf(student_id):
                sa.pair81, sa.pair82, sa.pair83, sa.pair84, sa.pair85,
                sa.pair86
         FROM student s
-        LEFT JOIN student_survey_answer sa ON s.exam_id = sa.exam_id
+        LEFT JOIN student_survey_answer sa 
+            ON s.exam_id = sa.exam_id
+        LEFT JOIN campus c
+            ON s.campus = c.campus_name
         WHERE s.id = %s;
     """, (student_id,))
 
@@ -1240,9 +1411,12 @@ def download_pdf(student_id):
         "created_at": row[2],
         "campus": row[3],
         "photo": row[4],
-        "preferred_program": row[5],
-        "ai_explanation": format_ai_explanation_for_pdf(row[6]),
-        "answers": [row[i] for i in range(7, 93)]
+        "campus_name": row[5],
+        "campus_address": row[6],
+        "guidance_counselor": row[7],
+        "preferred_program": row[8],
+        "ai_explanation": format_ai_explanation_for_pdf(row[9]),
+        "answers": [row[i] for i in range(10, 96)]
     }
 
     answers_clean = student_data["answers"]
@@ -1296,6 +1470,9 @@ def download_pdf(student_id):
         year=year,
         student_data=student_data,
         student_campus=student_data["campus"],
+        guidance_counselor=student_data["guidance_counselor"],
+        campus_name=student_data["campus_name"],
+        campus_address=student_data["campus_address"],
         top_letters=top_letters,
         match_status=match_status,
         predicted_programs=predicted_programs,
@@ -1308,7 +1485,7 @@ def download_pdf(student_id):
 
     pdf_file = generate_pdf(html)
 
-    filename = f"Survey_Result_{student_data['exam_id']}.pdf"
+    filename = f"Career_Survey_Result_{student_data['exam_id']}_{student_data['fullname']}.pdf"
 
     print("PHOTO FILE:", student_data["photo"])
     print("PHOTO BASE64:", bool(student_photo_base64))

@@ -203,6 +203,20 @@ class="
                         <span class="hidden lg:inline {{ 'text-[#166D3B]' if request.path == url_for('admin.addAdmin') else 'text-black group-hover:text-[#166D3B]' }}">ADMINISTRATOR</span>
                     </a>
                 </li>
+                {% if is_super_admin %}
+                <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
+                    {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.campuses') else 'hover:bg-[#f6ebcd]' }}">
+                    <a href="{{ url_for('admin.campuses') }}" 
+                    class="flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-sm lg:text-xl p-3 group">
+
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6 {{ 'text-[#166D3B]' if request.path == url_for('admin.campuses') else 'text-black group-hover:text-[#166D3B]' }}">
+                            <path d="M19.006 3.705a.75.75 0 1 0-.512-1.41L6 6.838V3a.75.75 0 0 0-.75-.75h-1.5A.75.75 0 0 0 3 3v4.93l-1.006.365a.75.75 0 0 0 .512 1.41l16.5-6Z" />
+                            <path fill-rule="evenodd" d="M3.019 11.114 18 5.667v3.421l4.006 1.457a.75.75 0 1 1-.512 1.41l-.494-.18v8.475h.75a.75.75 0 0 1 0 1.5H2.25a.75.75 0 0 1 0-1.5H3v-9.129l.019-.007ZM18 20.25v-9.566l1.5.546v9.02H18Zm-9-6a.75.75 0 0 0-.75.75v4.5c0 .414.336.75.75.75h3a.75.75 0 0 0 .75-.75V15a.75.75 0 0 0-.75-.75H9Z" clip-rule="evenodd" />
+                            </svg>
+                        <span class="hidden lg:inline {{ 'text-[#166D3B]' if request.path == url_for('admin.campuses') else 'text-black group-hover:text-[#166D3B]' }}">CAMPUSES</span>
+                    </a>
+                </li>
+                {% endif %}
                 <li class="m-0 lg:m-1 rounded-xl flex-shrink-0 
                     {{ 'bg-[#f6ebcd]' if request.path == url_for('admin.program') else 'hover:bg-[#f6ebcd]' }}">
                     <a href="{{ url_for('admin.program') }}" 
@@ -231,20 +245,6 @@ class="
             </ul>
         </nav>
     </aside>
-
-{% set campus_addresses = {
-    'San Carlos Campus': 'Sitio Mabuni, Brgy. Guadalupe, San Carlos City, Negros Occidental',
-    'Candoni Campus': 'Brgy. West, Candoni, Negros Occidental',
-    'Cauayan Campus': 'Brgy. Poblacion, Cauayan, Negros Occidental',
-    'Moises Padilla Campus': 'Brgy. Poblacion, Moises Padilla, Negros Occidental',
-    'Kabankalan Campus': 'Kabankalan City, Negros Occidental',
-    'Hinigaran Campus': 'Brgy. Gargato, Hinigaran, Negros Occidental',
-    'Hinoba-an Campus': 'Brgy. Pook, Hinoba-an, Negros Occidental',
-    'Sipalay Campus': 'Brgy. Gil Montilla, Sipalay City, Negros Occidental',
-    'Victorias Campus': 'Brgy. XIV, Victorias City, Negros Occidental',
-    'Valladolid Extension Class': 'Valladolid, Negros Occidental',
-    'Ilog Campus': 'Brgy. 1, Municipality of Ilog, Negros Occidental'
-} %}
 <footer
 class="
     hidden lg:flex
@@ -260,8 +260,8 @@ class="
     <div class="flex justify-center items-center w-full gap-2 lg:gap-4">
         <img src="{{ url_for('static', filename='images/cpsulogo.png') }}" alt="CPSU Logo" class="w-10 h-9">
         <div class="flex flex-col sm:flex-row items-center gap-2">
-            <h1 class="font-semibold text-[13px] sm:text-[15px] uppercase">CENTRAL PHILIPPINES STATE UNIVERSITY, {{ admin_campus }}</h1>
-            <h1 class="text-[13px] sm:text-[15px]">| {{ campus_addresses.get(admin_campus, 'Negros Occidental') }}</h1>
+            <h1 class="font-semibold text-[13px] lg:text-[13px] uppercase">CENTRAL PHILIPPINES STATE UNIVERSITY, {{ campus_name }}</h1>
+            <h1 class="text-[13px] lg:text-[13px] uppercase">| {{ campus_address }}</h1>
         </div>
     </div>
 </footer>

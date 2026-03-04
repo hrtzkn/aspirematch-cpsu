@@ -253,31 +253,7 @@
                 <div class="school">Central Philippines State University</div>
                 <div class="school">{{ student_campus }}</div>
                 <div class="address">
-                    {% if student_campus == 'San Carlos Campus' %}
-                        San Carlos City, Negros Occidental 6127
-                    {% elif student_campus == 'Candoni Campus' %}
-                        Candoni, Negros Occidental 6110
-                    {% elif student_campus == 'Cauayan Campus' %}
-                        Poblacion Cauayan, Negros Occidental 6112
-                    {% elif student_campus == 'Moises Padilla Campus' %}
-                        Moises Padilla, Negros Occidental 6132
-                    {% elif student_campus == 'Kabankalan Campus' %}
-                            Kabanlakan City, Negros Occidental 6111
-                    {% elif student_campus == 'Hinigaran  Campus' %}
-                        Hinigaran, Negros Occidental 6119
-                    {% elif student_campus == 'Hinoba-an Campus' %}
-                        Hinoba-an, Negros Occidental 6114
-                    {% elif student_campus == 'Sipalay Campus' %}
-                        Sipalay City, Negros Occidental 6113
-                    {% elif student_campus == 'Victorias Campus' %}
-                        Vinctorias City, Negros Occidental 6119
-                    {% elif student_campus == 'Valladolid Extension Campus' %}
-                        Valladolid, Negros Occidental
-                    {% elif student_campus == 'Ilog  Campus' %}
-                        Municipality of Ilog, Negros Occidental 6109
-                    {% else %}
-                        Campus Address, Postcode
-                    {% endif %}
+                    {{ campus_info.get(student_campus, 'Campus Address') }}
                 </div>
             </td>
         </tr>

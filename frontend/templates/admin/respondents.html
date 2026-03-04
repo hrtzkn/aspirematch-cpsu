@@ -10,7 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
     .hover-scroll {
-        max-width: 280px;
+        max-width: 250px;
         overflow: hidden;
         white-space: nowrap;
         position: relative;
@@ -34,8 +34,8 @@
     <!-- MAIN CONTENT -->
     <div class="flex flex-1">
         <main class="ml-0 lg:ml-60 flex-1 bg-white shadow-md rounded-md border border-[#166D3B] p-1 lg:p-2 mb-0 lg:mb-16 mt-32 lg:mt-20 h-fit">
-            <div class="p-2">
-                <div class="flex justify-between items-center">
+            <div class="p-1">
+                <div class="flex flex-wrap justify-between items-center">
                     <h1 class="text-xs lg:text-2xl font-bold">RESPONDENTS</h1>
 
                     <form method="GET" action="{{ url_for('admin.respondents') }}" class="flex items-center">
@@ -98,7 +98,7 @@
                             name="q"
                             value="{{ search_query }}"
                             placeholder="Search student..."
-                            class="w-full pl-10 pr-3 py-1 lg:py-2 border border-[#166D3B] rounded-lg
+                            class="w-fit pl-10 pr-3 py-1 lg:py-2 border border-[#166D3B] rounded-lg
                                     text-gray-700 text-[9px] lg:text-sm focus:outline-none focus:ring-2
                                     focus:ring-[#166D3B]/40">
                     </div>
@@ -112,37 +112,37 @@
                     </form>
                 </div>
 <div class="flex items-end gap-6 mt-2">
-    {% if is_super_admin %}
-    <form method="GET"
-          action="{{ url_for('admin.respondents') }}"
-          class="flex items-center gap-1">
+{% if is_super_admin %}
+<form method="GET"
+      action="{{ url_for('admin.respondents') }}"
+      class="flex items-center gap-1">
 
-        <input type="hidden" name="year" value="{{ year }}">
-        <input type="hidden" name="status" value="{{ status_filter }}">
-        <input type="hidden" name="q" value="{{ search_query }}">
-        <input type="hidden" name="program" value="{{ selected_program }}">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="status" value="{{ status_filter }}">
+    <input type="hidden" name="q" value="{{ search_query }}">
+    <input type="hidden" name="program" value="{{ selected_program }}">
 
-            <label for="campus" class="text-black text-[9px] lg:text-sm justify-center font-bold mb-1">
-                Campus:
-            </label>
-            <select id="campus" name="campus"
-                    class="border border-[#166D3B] rounded-md px-3 py-2 text-xs lg:text-sm h-[38px]"
-                    onchange="this.form.submit()">
-                <option value="">All Campuses</option>
-                <option value="Kabankalan Main Campus" {% if request.args.get('campus') == 'Kabankalan Main Campus' %}selected{% endif %}>Kabankalan Main Campus</option>
-                <option value="Candoni Campus" {% if request.args.get('campus') == 'Candoni Campus' %}selected{% endif %}>Candoni Campus</option>
-                <option value="Cauayan Campus" {% if request.args.get('campus') == 'Cauayan Campus' %}selected{% endif %}>Cauayan Campus</option>
-                <option value="Hinigaran Campus" {% if request.args.get('campus') == 'Hinigaran Campus' %}selected{% endif %}>Hinigaran Campus</option>
-                <option value="Hinoba-an Campus" {% if request.args.get('campus') == 'Hinoba-an Campus' %}selected{% endif %}>Hinoba-an Campus</option>
-                <option value="Ilog Campus" {% if request.args.get('campus') == 'Ilog Campus' %}selected{% endif %}>Ilog Campus</option>
-                <option value="Moises Padilla Campus" {% if request.args.get('campus') == 'Moises Padilla Campus' %}selected{% endif %}>Moises Padilla Campus</option>
-                <option value="San Carlos Campus" {% if request.args.get('campus') == 'San Carlos Campus' %}selected{% endif %}>San Carlos Campus</option>
-                <option value="Sipalay Campus" {% if request.args.get('campus') == 'Sipalay Campus' %}selected{% endif %}>Sipalay Campus</option>
-                <option value="Valladolid Extension Campus" {% if request.args.get('campus') == 'Valladolid Extension Campus' %}selected{% endif %}>Valladolid Extension Campus</option>
-                <option value="Victorias Campus" {% if request.args.get('campus') == 'Victorias Campus' %}selected{% endif %}>Victorias Campus</option>
-            </select>
-    </form>
-    {% endif %}
+    <label for="campus" class="text-black text-[9px] lg:text-sm justify-center font-bold mb-1">
+        Campus:
+    </label>
+    <select id="campus" name="campus"
+            class="border border-[#166D3B] rounded-md px-3 py-2 text-xs lg:text-sm h-[38px]"
+            onchange="this.form.submit()">
+        <option value="">All Campuses</option>
+        {% for c in campuses %}
+            <option value="{{ c }}" {% if selected_campus == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+    </select>
+</form>
+{% else %}
+<!-- Sub admin: fixed campus -->
+<input type="text"
+       value="{{ admin_campus }}"
+       readonly
+       class="hidden border border-[#166D3B] rounded-md px-3 py-2 text-xs lg:text-sm h-[38px] bg-gray-100 cursor-not-allowed">
+
+<input type="hidden" name="campus" value="{{ admin_campus }}">
+{% endif %}
     <!-- Program filter -->
     <form method="GET"
           action="{{ url_for('admin.respondents') }}"

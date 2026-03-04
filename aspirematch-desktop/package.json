@@ -1,6 +1,6 @@
 {
   "name": "aspirematch",
-  "version": "1.0.2",
+  "version": "1.0.0",
   "description": "AspireMatch Desktop App",
   "main": "main.js",
   "scripts": {

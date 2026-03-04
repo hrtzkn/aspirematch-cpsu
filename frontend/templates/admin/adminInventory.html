@@ -35,7 +35,7 @@
     <div class="flex flex-1">
         <main class="ml-0 lg:ml-60 mr-0 lg:mr-5 flex-1 bg-white shadow-md rounded-md border border-[#166D3B] p-1 lg:p-2 mb-0 lg:mb-16 mt-32 lg:mt-20 h-fit">
             <div class="p-1">
-      <div class="flex flex-wrap justify-between items-center gap-1 lg:gap-4">
+      <div class="flex flex-wrap justify-between items-center gap-0 lg:gap-4">
         <h1 class="text-xs lg:text-2xl font-bold text-black">INVENTORY</h1>
 
         <form method="GET" action="{{ url_for('admin.adminInventory') }}" class="flex items-center">
@@ -129,19 +129,21 @@
             class="border border-[#166D3B] rounded-md px-3 py-2 text-xs lg:text-sm h-[38px]"
             onchange="this.form.submit()">
         <option value="">All Campuses</option>
-        <option value="Kabankalan Main Campus" {% if request.args.get('campus') == 'Kabankalan Main Campus' %}selected{% endif %}>Kabankalan Main Campus</option>
-        <option value="Candoni Campus" {% if request.args.get('campus') == 'Candoni Campus' %}selected{% endif %}>Candoni Campus</option>
-        <option value="Cauayan Campus" {% if request.args.get('campus') == 'Cauayan Campus' %}selected{% endif %}>Cauayan Campus</option>
-        <option value="Hinigaran Campus" {% if request.args.get('campus') == 'Hinigaran Campus' %}selected{% endif %}>Hinigaran Campus</option>
-        <option value="Hinoba-an Campus" {% if request.args.get('campus') == 'Hinoba-an Campus' %}selected{% endif %}>Hinoba-an Campus</option>
-        <option value="Ilog Campus" {% if request.args.get('campus') == 'Ilog Campus' %}selected{% endif %}>Ilog Campus</option>
-        <option value="Moises Padilla Campus" {% if request.args.get('campus') == 'Moises Padilla Campus' %}selected{% endif %}>Moises Padilla Campus</option>
-        <option value="San Carlos Campus" {% if request.args.get('campus') == 'San Carlos Campus' %}selected{% endif %}>San Carlos Campus</option>
-        <option value="Sipalay Campus" {% if request.args.get('campus') == 'Sipalay Campus' %}selected{% endif %}>Sipalay Campus</option>
-        <option value="Valladolid Extension Campus" {% if request.args.get('campus') == 'Valladolid Extension Campus' %}selected{% endif %}>Valladolid Extension Campus</option>
-        <option value="Victorias Campus" {% if request.args.get('campus') == 'Victorias Campus' %}selected{% endif %}>Victorias Campus</option>
+        {% for c in campuses %}
+            <option value="{{ c.campus_name }}" {% if selected_campus == c.campus_name %}selected{% endif %}>
+                {{ c.campus_name }}
+            </option>
+        {% endfor %}
     </select>
 </form>
+{% else %}
+<!-- Sub admin: fixed campus -->
+<input type="text"
+       value="{{ admin_campus }}"
+       readonly
+       class="hidden border border-[#166D3B] rounded-md px-3 py-2 text-xs lg:text-sm h-[38px] bg-gray-100 cursor-not-allowed">
+
+<input type="hidden" name="campus" value="{{ admin_campus }}">
 {% endif %}
 
       <table class="w-fit lg:w-full border border-[#166D3B] mt-3 rounded-lg text-[8px] lg:text-[14px]">

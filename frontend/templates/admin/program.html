@@ -39,15 +39,10 @@
 
         <option value="">All Campuses</option>
 
-        {% for c in [
-            'Kabankalan Main Campus','Candoni Campus','Cauayan Campus',
-            'Hinigaran Campus','Hinoba-an Campus','Ilog Campus',
-            'Moises Padilla Campus','San Carlos Campus','Sipalay Campus',
-            'Valladolid Extension Campus','Victorias Campus'
-        ] %}
-        <option value="{{ c }}" {% if selected_campus == c %}selected{% endif %}>
-            {{ c }}
-        </option>
+        {% for c in campuses %}
+            <option value="{{ c.campus_name }}" {% if selected_campus == c.campus_name %}selected{% endif %}>
+                {{ c.campus_name }}
+            </option>
         {% endfor %}
     </select>
 </form>
@@ -77,40 +72,32 @@
                             class="w-full p-2 border border-[#166D3B] rounded-lg bg-white"
                             oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
 
-            {% if is_super_admin %}
+{% if is_super_admin %}
+    <!-- Super admin: campus based on selected campus -->
+    <select name="campus"
+            required
+            class="w-1/2 p-2 border border-[#166D3B] rounded-lg bg-white">
 
-                <!-- Super admin: campus based on selected campus -->
-                <select name="campus"
-                        required
-                        class="w-1/2 p-2 border border-[#166D3B] rounded-lg bg-white">
+        <option value="" disabled {% if not selected_campus %}selected{% endif %}>
+            Select Campus
+        </option>
 
-                    <option value="" disabled {% if not selected_campus %}selected{% endif %}>
-                        Select Campus
-                    </option>
+        {% for c in campuses %}
+            <option value="{{ c.campus_name }}" {% if selected_campus == c.campus_name %}selected{% endif %}>
+                {{ c.campus_name }}
+            </option>
+        {% endfor %}
+    </select>
 
-                    {% for c in [
-                        'Kabankalan Main Campus','Candoni Campus','Cauayan Campus',
-                        'Hinigaran Campus','Hinoba-an Campus','Ilog Campus',
-                        'Moises Padilla Campus','San Carlos Campus','Sipalay Campus',
-                        'Valladolid Extension Campus','Victorias Campus'
-                    ] %}
-                        <option value="{{ c }}" {% if selected_campus == c %}selected{% endif %}>
-                            {{ c }}
-                        </option>
-                    {% endfor %}
-                </select>
+{% else %}
+    <!-- Sub admin: fixed campus -->
+    <input type="text"
+           value="{{ admin_campus }}"
+           readonly
+           class="w-1/2 p-2 border border-[#166D3B] rounded-lg bg-gray-100 cursor-not-allowed">
 
-            {% else %}
-
-                <!-- Sub admin: fixed campus -->
-                <input type="text"
-                       value="{{ admin_campus }}"
-                       readonly
-                       class="w-1/2 p-2 border border-[#166D3B] rounded-lg bg-gray-100 cursor-not-allowed">
-
-                <input type="hidden" name="campus" value="{{ admin_campus }}">
-
-            {% endif %}
+    <input type="hidden" name="campus" value="{{ admin_campus }}">
+{% endif %}
 
                         <div class="relative hidden  w-full">
                             <label class="font-semibold mb-1 block">Career Category</label>

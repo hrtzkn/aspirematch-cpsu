@@ -102,7 +102,7 @@
         .header-text .school {
             font-size: 18px;
             font-weight: bold;
-            color: #166D3B;
+            color: #16A34A;
             text-transform: uppercase;
         }
 
@@ -154,33 +154,11 @@
         <!-- CENTER TEXT -->
         <td class="header-text">
             <div class="school">Central Philippines State University</div>
-            <div class="school">{{ info.campus }}</div>
-            <div class="address">
-                {% if info.campus == 'San Carlos Campus' %}
-                    Sitio Mabuni, Brgy. Guadalupe, San Carlos City, Negros Occidental
-                {% elif info.campus == 'Candoni Campus' %}
-                    Brgy. West, Candoni, Negros Occidental
-                {% elif info.campus == 'Cauayan Campus' %}
-                    Brgy. Poblacion Cauayan, Negros Occidental
-                {% elif info.campus == 'Moises Padilla Campus' %}
-                    Brgy. Poblacion, Moises Padilla, Negros Occidental
-                {% elif info.campus == 'Kabankalan Campus' %}
-                    Kabankalan City, Negros Occidental
-                {% elif info.campus == 'Hinigaran  Campus' %}
-                    Brgy. Gargato, Hinigaran, Negros Occidental
-                {% elif info.campus == 'Hinoba-an Campus' %}
-                    Brgy. Pook, Hinoba-an, Negros Occidental
-                {% elif info.campus == 'Sipalay Campus' %}
-                    Brgy. Gil Montilla, Sipalay City, Negros Occidental
-                {% elif info.campus == 'Victorias Campus' %}
-                    Brgy. XIV, Victorias City, Negros Occidental
-                {% elif info.campus == 'Valladolid Extension Campus' %}
-                    Valladolid, Negros Occidental
-                {% elif info.campus == 'Ilog  Campus' %}
-                    Brgy. 1, Municipality of Ilog, Negros Occidental
-                {% else %}
-                    Campus Address
-                {% endif %}
+            <div style="color: #16A34A; font-weight: bold; text-transform: uppercase; font-size: 18px;">
+                {{ info.campus }}
+            </div>
+            <div style="color: black; font-size: 12px;">
+                {{ campus_info.get(info.campus, 'Campus Address') }}
             </div>
             <div class="unit">Guidance and Counseling Unit</div>
         </td>
