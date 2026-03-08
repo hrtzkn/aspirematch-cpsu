@@ -59,17 +59,6 @@
                 class="hidden p-1 text-xs text-gray-600 italic">
                 Dan is typing...
             </div>
-
-            <div class="mt-2 flex sticky bottom-0 bg-white pt-2">
-                <input id="chat-input"
-                    class="flex-grow text-[#166D3B] p-2 border border-black rounded-l text-sm md:text-base"
-                    placeholder="Ask Dan...">
-
-                <button id="chat-send"
-                    class="bg-[#166D3B] text-white px-4 rounded-r text-sm md:text-base">
-                    Send
-                </button>
-            </div>
         </div>
     </div>
 </header>
@@ -151,14 +140,14 @@ document.getElementById("chat-button").onclick = () => {
         setTimeout(() => {
             hideTyping();
             addMessage("dan", "Hello! I'm <b>Dan</b>, your AspireMatch virtual assistant. 😊");
-        }, 800);
+        }, 500);
 
         setTimeout(() => {
             showTyping();
             setTimeout(() => {
                 hideTyping();
                 addMessage("dan", "AspireMatch is a <b>Career Interest Recommendation System</b> designed to help students discover recommended programs based on their strengths and preferences.");
-            }, 1000);
+            }, 700);
         }, 1800);
 
         setTimeout(() => {
@@ -166,44 +155,15 @@ document.getElementById("chat-button").onclick = () => {
             setTimeout(() => {
                 hideTyping();
                 addMessage("dan",
-                    `Would you like a quick step-by-step tour?
+                    `Click below to see a quick step-by-step.
                     <button data-chat-action="true"
                             onclick="startGuide()"
                             class="px-2 py-1 rounded border">
                     Start Guide
                     </button>`
                 );
-            }, 900);
+            }, 500);
         }, 3200);
-    }
-};
-
-document.getElementById("chat-send").onclick = async () => {
-    let msgInput = $("chat-input");
-    let msg = msgInput.value.trim();
-    if (!msg) return;
-
-    addMessage("you", escapeHtml(msg));
-    msgInput.value = "";
-
-    showTyping();
-
-    try {
-        let res = await fetch("/chatbot", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ message: msg })
-        });
-        let data = await res.json();
-
-        setTimeout(() => {
-            hideTyping();
-            addMessage("dan", data.reply);
-        }, 800);
-    } catch (err) {
-        hideTyping();
-        addMessage("dan", "Sorry — I couldn't reach the assistant right now. Try again.");
-        console.error(err);
     }
 };
 
@@ -284,7 +244,7 @@ const GUIDE_STEPS = [
             <p>After logging in:</p>
             <ul class="list-disc ml-4">
                 <li>Take the career interest assessment (if not already completed).</li>
-                <li>If you've completed it, view your predicted programs and detailed feedback.</li>
+                <li>If you've completed it, view your recommended programs and AI explanation.</li>
             </ul>
         `
     },
@@ -403,28 +363,8 @@ window.endGuide = () => {
     const existing = messagesDiv.querySelector(".aspire-guide-placeholder");
     if (existing) existing.remove();
 
-    addMessage("dan", "Guide closed. If you want to run it again click Help or type 'guide'.");
+    addMessage("dan", "Guide closed. If you want to run it again click 'Start Guide'.");
 };
-
-const originalSend = document.getElementById("chat-send").onclick;
-(function interceptHelp() {
-    const sendBtn = $("chat-send");
-    const origHandler = sendBtn.onclick;
-    sendBtn.onclick = async function (ev) {
-        if (origHandler) await origHandler.call(this, ev);
-
-        const messagesDiv = $("chat-messages");
-        const lastYou = Array.from(messagesDiv.querySelectorAll("div"))
-            .reverse()
-            .find(n => n.innerText?.startsWith("You:"));
-        if (!lastYou) return;
-
-        const content = lastYou.innerText.replace(/^You:\s*/, "").trim().toLowerCase();
-        if (["help", "guide", "start guide"].includes(content)) {
-            startGuide();
-        }
-    };
-})();
 
 document.addEventListener("click", function (event) {
     const chatPanel = document.getElementById("chat-panel");

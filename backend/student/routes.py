@@ -135,7 +135,7 @@ def format_ai_explanation_for_pdf(text):
     for title in sections:
         formatted = formatted.replace(
             title,
-            f'<div class="ai-subtitle">{title}</div>'
+            f'<div class="font-semibold text-black uppercase mt-4 ai-subtitle">{title}</div>'
         )
 
     lines = formatted.split("\n")
@@ -145,7 +145,7 @@ def format_ai_explanation_for_pdf(text):
     for line in lines:
         if line.strip().startswith("•"):
             if not in_list:
-                html_lines.append("<ul>")
+                html_lines.append('<ul class="list-disc ml-6">')
                 in_list = True
             html_lines.append(f"<li>{line.replace('•', '').strip()}</li>")
         else:
@@ -1257,7 +1257,7 @@ def surveyResult():
         "campus_address": row[6],
         "guidance_counselor": row[7],
         "preferred_program": row[8],
-        "ai_explanation": format_ai_explanation_for_pdf(row[9]),
+        "ai_explanation": format_ai_explanation_for_pdf(row[9]) if row[9] else None,
         "answers": [row[i] for i in range(10, 96)]
     }
 
@@ -1322,6 +1322,26 @@ def generate_ai_explanation():
     if "student_id" not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # get exam_id
+    cur.execute("SELECT exam_id FROM student WHERE id=%s", (session["student_id"],))
+    exam_id = cur.fetchone()[0]
+
+    # check if explanation already exists
+    cur.execute("""
+        SELECT ai_explanation
+        FROM student_survey_answer
+        WHERE exam_id = %s
+    """, (exam_id,))
+    
+    existing = cur.fetchone()
+
+    if existing and existing[0]:
+        conn.close()
+        return jsonify({"explanation": existing[0]})
+
     data = request.json
     top_letters = data.get("top_letters", [])
     preferred_program = data.get("preferred_program", "")
@@ -1333,21 +1353,12 @@ def generate_ai_explanation():
         fullname
     )
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-
+    # save explanation
     cur.execute("""
-        SELECT ai_explanation
-        FROM student_survey_answer
-        WHERE exam_id = (
-            SELECT exam_id FROM student WHERE id = %s
-        )
-    """, (session["student_id"],))
-
-    existing = cur.fetchone()
-
-    if existing and existing[0]:
-        return jsonify({"error": "AI explanation already generated"}), 403
+        UPDATE student_survey_answer
+        SET ai_explanation = %s
+        WHERE exam_id = %s
+    """, (explanation, exam_id))
 
     conn.commit()
     conn.close()

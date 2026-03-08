@@ -34,6 +34,9 @@
             {% if not ai_explanation %}
             <button
                 id="generateAIBtn"
+                data-fullname="{{ student_results.fullname }}"
+                data-program="{{ student_results.preferred_program }}"
+                data-letters='{{ top_letters | tojson }}'
                 class="bg-[#166D3B] hover:bg-green-700 text-white
                     text-xs sm:text-sm lg:text-lg
                     px-4 sm:px-6 py-2 rounded w-full sm:w-auto">
@@ -217,84 +220,89 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
 
-    const surveyData = document.getElementById("surveyData");
-    const generateBtn = document.getElementById("generateAIBtn");
+    const btn = document.getElementById("generateAIBtn");
     const explanationBox = document.getElementById("aiExplanationBox");
 
-    generateBtn.addEventListener("click", async () => {
+    if (!btn) return;
 
-        generateBtn.disabled = true;
-        generateBtn.textContent = "Generating...";
+    btn.addEventListener("click", async () => {
+
+        btn.disabled = true;
+        btn.innerText = "Generating AI Explanation...";
 
         explanationBox.textContent = "Generating your AI career explanation...";
 
+        const fullname = btn.dataset.fullname;
+        const preferred_program = btn.dataset.program;
+        const top_letters = JSON.parse(btn.dataset.letters);
+
         try {
-            const response = await fetch("/student/generate-ai-explanation", {
+
+            const res = await fetch("/student/generate-ai-explanation", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json"
+                },
                 body: JSON.stringify({
-                    fullname: surveyData.dataset.fullname,
-                    preferred_program: surveyData.dataset.preferredProgram,
-                    top_letters: surveyData.dataset.topLetters.split(",")
+                    fullname: fullname,
+                    preferred_program: preferred_program,
+                    top_letters: top_letters
                 })
             });
 
-            const data = await response.json();
+            const data = await res.json();
 
-            explanationBox.innerHTML = formatAIExplanation(data.explanation);
+            if (data.explanation) {
 
-            // ✅ PERMANENTLY HIDE BUTTON AFTER SUCCESS
-            generateBtn.style.display = "none";
+                explanationBox.innerHTML = formatAIExplanation(data.explanation);
+
+                // hide button after success
+                btn.style.display = "none";
+
+            } else {
+                throw new Error(data.error || "Failed");
+            }
 
         } catch (err) {
+
             explanationBox.textContent = "Failed to generate explanation.";
-            generateBtn.disabled = false;
-            generateBtn.textContent = "Generate AI Explanation";
+            btn.disabled = false;
+            btn.innerText = "Generate AI Explanation";
             console.error(err);
+
         }
+
     });
 
 });
 
 function formatAIExplanation(text) {
+
     const sections = [
         "Career Letter Explanation",
         "Strengths",
         "Weaknesses",
-        "Personalized Career Advice",
-        "Recommended Courses or Subjects"
+        "Personalized Career Advice"
     ];
 
     let formattedText = text;
 
-    formattedText = formattedText.replace(/\n{3,}/g, "\n\n").trim();
-
     sections.forEach(title => {
+
         const regex = new RegExp(`\\b${title}\\b`, "gi");
+
         formattedText = formattedText.replace(
             regex,
-            `<div class="font-semibold text-black uppercase tracking-wide mt-4">${title}</div>`
+            `<div class="font-semibold text-black uppercase mt-4">${title}</div>`
         );
+
     });
 
     return formattedText;
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-    const explanationBox = document.getElementById("aiExplanationBox");
-
-    if (explanationBox.textContent.trim() !==
-        'Click "Generate AI Explanation" to view your AI career guidance.') {
-
-        explanationBox.innerHTML = formatAIExplanation(
-            explanationBox.textContent
-        );
-    }
-});
 </script>
-
 
 {% include 'components/footer.html' %}
 
