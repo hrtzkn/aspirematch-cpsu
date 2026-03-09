@@ -85,6 +85,8 @@
   const surveyAnswers = {};
   let selectedProgram = null;
   let currentIndex = 0;
+  let surveySubmitting = false;
+  let questionLocked = false;
 
   const interestPairs = [
     [
@@ -445,6 +447,7 @@
 
     interestOptions.innerHTML = "";
 
+    if (index > interestPairs.length) return;
     // === SURVEY FINISHED ===
     if (index >= interestPairs.length) {
 
@@ -453,9 +456,11 @@
         return;
       }
 
-      if (Object.keys(surveyAnswers).length !== interestPairs.length) {
-        alert("Please complete all questions.");
-        return;
+      for (let i = 0; i < interestPairs.length; i++) {
+        if (!surveyAnswers[i]) {
+          alert("Please complete all questions.");
+          return;
+        }
       }
 
       submitSurvey();
@@ -481,6 +486,11 @@
 
     interestOptions.appendChild(div);
 
+    if (surveyAnswers[index]) {
+      const prev = div.querySelector(`input[value="${surveyAnswers[index]}"]`);
+      if (prev) prev.checked = true;
+    }
+
     /* BACK BUTTON */
     backBtn.style.display = "inline-block";
     backBtn.onclick = () => {
@@ -497,17 +507,19 @@
     div.querySelectorAll("input").forEach(input => {
       input.addEventListener("change", () => {
 
+        if (questionLocked) return;
+        questionLocked = true;
+
         errorMsg.classList.add("hidden");
 
         const chosenLetter = input.value;
-        surveyAnswers[`pair${index + 1}`] = chosenLetter;
+        surveyAnswers[index] = chosenLetter;
 
         const chosenText = input.parentNode.textContent
           .replace(`${chosenLetter}.`, "")
           .trim();
 
-        // Optional chatbot explanation
-        fetch(`/student/chatbot_receive_interest`, {
+        fetch("/student/chatbot_receive_interest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ letter: chosenLetter })
@@ -520,27 +532,36 @@
         })
         .catch(err => console.error("Chatbot error:", err));
 
-        setTimeout(() => {
-          currentIndex++;
-          showPair(currentIndex);
-        }, 200);
+        currentIndex++;
+        showPair(currentIndex);
+
+        questionLocked = false;
       });
     });
 
     /* NEXT BUTTON */
-    nextBtn.style.display = "inline-block";
     nextBtn.onclick = () => {
       const radios = document.querySelectorAll(`input[name="interest${currentIndex}"]`);
       let selected = false;
-      radios.forEach(r => { if (r.checked) selected = true; });
+
+      radios.forEach(r => {
+        if (r.checked) selected = true;
+      });
 
       if (!selected) {
         errorMsg.classList.remove("hidden");
+        return;
       }
+
+      currentIndex++;
+      showPair(currentIndex);
     };
   }
 
   function submitSurvey() {
+
+    if (surveySubmitting) return;
+    surveySubmitting = true;
 
     interestOptions.innerHTML =
       "<p class='text-blue-600 font-semibold'>Submitting survey...</p>";

@@ -964,9 +964,13 @@ def submit_survey():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        columns = ", ".join(answers.keys())
-        placeholders = ", ".join(["%s"] * len(answers))
-        values = list(answers.values())
+        formatted_answers = {}
+        for k, v in answers.items():
+            formatted_answers[f"pair{int(k)+1}"] = v
+
+        columns = ", ".join(formatted_answers.keys())
+        placeholders = ", ".join(["%s"] * len(formatted_answers))
+        values = list(formatted_answers.values())
 
         cur.execute(
             f"""
