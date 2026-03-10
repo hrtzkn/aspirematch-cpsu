@@ -216,60 +216,6 @@ If you did not request this, please ignore this email."""
     except Exception as e:
         current_app.logger.error(f"❌ SendGrid exception: {e}")
         return False
-
-def send_otp_email(email, otp):
-    import os
-    import base64
-    from email.mime.text import MIMEText
-    from google.oauth2.credentials import Credentials
-    from google.auth.transport.requests import Request
-    from googleapiclient.discovery import build
-    from flask import current_app
-
-    try:
-        creds = Credentials(
-            None,
-            refresh_token=os.getenv("GMAIL_REFRESH_TOKEN"),
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=os.getenv("GMAIL_CLIENT_ID"),
-            client_secret=os.getenv("GMAIL_CLIENT_SECRET"),
-        )
-
-        creds.refresh(Request())
-
-        service = build("gmail", "v1", credentials=creds)
-
-        message = MIMEText(
-            f"""Hello,
-
-Your AspireMatch OTP is:
-
-{otp}
-
-This code expires in 5 minutes.
-
-If you did not request this, ignore this message.
-
-AspireMatch Team"""
-        )
-
-        message["to"] = email
-        message["from"] = os.getenv("GMAIL_USER")
-        message["subject"] = "Your AspireMatch Login OTP"
-
-        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-
-        service.users().messages().send(
-            userId="me",
-            body={"raw": raw}
-        ).execute()
-
-        current_app.logger.info("✅ OTP sent via Gmail API")
-        return True
-
-    except Exception as e:
-        current_app.logger.error(f"❌ Gmail API error: {e}")
-        return False
     
 def generate_pdf(html):
     from weasyprint import HTML
@@ -318,74 +264,6 @@ def get_letter_description(letter):
 def login_page():
     return render_template("student/studentLogin.html")
 
-@student_bp.route("/login", methods=["GET", "POST"])
-def studentlogin():
-    error = None
-    exam_error = False
-    email_error = False
-
-    if request.method == "POST":
-        exam_id = request.form["exam_id"]
-        email = request.form["email"]
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        # Check student by exam_id
-        cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s",
-            (exam_id,)
-        )
-        student = cur.fetchone()
-
-        if not student:
-            exam_error = True
-            error = "Invalid Examination ID"
-
-        else:
-            student_id, stored_email = student
-
-            # Optional: validate email if you want
-            if stored_email and stored_email != email:
-                email_error = True
-                error = "Email does not match our records"
-            else:
-                # Login student
-                session["student_id"] = student_id
-                session["exam_id"] = exam_id
-
-                # Check if survey already answered
-                cur.execute(
-                    """
-                    SELECT 1 FROM student_survey_answer
-                    WHERE exam_id = %s AND student_id = %s
-                    """,
-                    (exam_id, student_id)
-                )
-                survey_row = cur.fetchone()
-
-                cur.close()
-                conn.close()
-
-                if survey_row:
-                    return redirect(url_for("student.home"))
-                else:
-                    return redirect(url_for("student.survey"))
-
-        cur.close()
-        conn.close()
-
-        return render_template(
-            "student/studentLogin.html",
-            error=error,
-            exam_error=exam_error,
-            email_error=email_error,
-            exam_id=exam_id,
-            email=email
-        )
-
-    return render_template("student/studentLogin.html")
-"""
 @student_bp.route("/login", methods=["GET", "POST"])
 def studentlogin():
     error = None
@@ -472,7 +350,7 @@ def studentlogin():
         return redirect(url_for("student.verify"))
 
     return render_template("student/studentLogin.html")
-"""
+
 @student_bp.route("/verify", methods=["GET", "POST"])
 def verify():
     error = None

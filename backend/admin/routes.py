@@ -23,6 +23,7 @@ import smtplib
 from email.message import EmailMessage
 import random
 import time
+import requests
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -167,26 +168,55 @@ Time: {datetime.now(timezone.utc)}
     )
 
 def generate_otp():
-    """Generate a 6-digit OTP as a string."""
     return str(random.randint(100000, 999999))
 
+def send_otp_email(email, otp):
+    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
-def send_otp_email(email, otp, is_admin=True):
-    role = "Admin" if is_admin else "User"
+    if not SENDGRID_API_KEY:
+        current_app.logger.error("❌ SENDGRID_API_KEY not set.")
+        return False
 
-    body = f"""
-Your One-Time Password (OTP) for AspireMatch {role} login is:
+    data = {
+        "personalizations": [
+            {"to": [{"email": email}], "subject": "Your AspireMatch Login OTP"}
+        ],
+        "from": {"email": "aspirematch2@gmail.com"},
+        "content": [
+            {
+                "type": "text/plain",
+                "value": f"""Your One-Time Password (OTP) is:
 
 {otp}
 
 This code will expire in 5 minutes.
-"""
 
-    return send_email(
-        subject=f"AspireMatch {role} OTP",
-        to_email=email,
-        body=body
-    )
+If you did not request this, please ignore this email."""
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(
+            "https://api.sendgrid.com/v3/mail/send",
+            headers={
+                "Authorization": f"Bearer {SENDGRID_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json=data,
+            timeout=15
+        )
+
+        if response.status_code == 202:
+            current_app.logger.info("✅ OTP email sent via SendGrid.")
+            return True
+        else:
+            current_app.logger.error(f"❌ SendGrid error: {response.text}")
+            return False
+
+    except Exception as e:
+        current_app.logger.error(f"❌ SendGrid exception: {e}")
+        return False
 
 @admin_bp.route("/test-db")
 def test_db():
@@ -293,27 +323,16 @@ def forgot_password():
     error = success = None
 
     if request.method == "POST":
-        email = request.form["email"]
-
+        email = request.form.get("email")
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        cur.execute(
-            "SELECT id FROM super_admin WHERE email = %s",
-            (email,)
-        )
+        cur.execute("SELECT id FROM super_admin WHERE email = %s", (email,))
         admin = cur.fetchone()
+        is_super_admin = bool(admin)
 
-        
-        is_super_admin = False
-
-        if admin:
-            is_super_admin = True
-        else:
-            cur.execute(
-                "SELECT id FROM admin WHERE email = %s",
-                (email,)
-            )
+        if not admin:
+            cur.execute("SELECT id FROM admin WHERE email = %s", (email,))
             admin = cur.fetchone()
 
         cur.close()
@@ -323,54 +342,34 @@ def forgot_password():
             error = "No admin account found with this email."
         else:
             otp = generate_otp()
-
             session["admin_otp"] = otp
             session["admin_otp_email"] = email
             session["admin_otp_time"] = time.time()
             session["is_super_admin"] = is_super_admin
 
-            sent = send_otp_email(email, otp)
-
-            if not sent:
+            if send_otp_email(email, otp):
+                return redirect(url_for("admin.verify_reset_otp"))
+            else:
                 error = "Unable to send OTP. Please try again later."
-                return render_template("admin/adminForgotPassword.html", error=error)
-            
-            success = "OTP has been sent to your email."
 
-            return redirect(url_for("admin.verify_reset_otp"))
+    return render_template("admin/adminForgotPassword.html", error=error, success=success)
 
-    return render_template(
-        "admin/adminForgotPassword.html",
-        error=error,
-        success=success
-    )
-
+# ---------- Verify OTP ----------
 @admin_bp.route("/verify-reset-otp", methods=["GET", "POST"])
 def verify_reset_otp():
-    error = None
-    success = None
-    remaining = None
-
+    error = success = remaining = None
+    email = session.get("admin_otp_email")
     is_super_admin = session.get("is_super_admin", False)
-    
+
+    if not email:
+        return redirect(url_for("admin.forgot_password"))
+
+    # fetch admin details
     conn = get_db_connection()
     cur = conn.cursor()
-
-    if is_super_admin:
-        cur.execute("""
-            SELECT fullname, campus
-            FROM super_admin
-            WHERE email = %s
-        """, (session.get("admin_otp_email"),))
-    else:
-        cur.execute("""
-            SELECT fullname, campus
-            FROM admin
-            WHERE email = %s
-        """, (session.get("admin_otp_email"),))
-
+    table = "super_admin" if is_super_admin else "admin"
+    cur.execute(f"SELECT fullname, campus FROM {table} WHERE email = %s", (email,))
     admin_row = cur.fetchone()
-
     cur.close()
     conn.close()
 
@@ -380,53 +379,33 @@ def verify_reset_otp():
     fullname, admin_campus = admin_row
 
     if request.method == "POST":
-
         action = request.form.get("action")
 
         if action == "resend":
-            if "admin_otp_email" not in session:
-                error = "Session expired. Please restart password reset."
+            last_sent = session.get("admin_otp_time", 0)
+            elapsed = int(time.time() - last_sent)
+            if elapsed < 60:
+                remaining = 60 - elapsed
+                error = f"Please wait {remaining} seconds before resending OTP."
             else:
-                last_sent = session.get("admin_otp_time", 0)
-                elapsed = int(time.time() - last_sent)
-
-                if elapsed < 60:
-                    remaining = 60 - elapsed
-                    error = "Please wait before resending OTP."
-                else:
-                    otp = generate_otp()
-                    session["admin_otp"] = otp
-                    session["admin_otp_time"] = time.time()
-
-                    sent = send_otp_email(session["admin_otp_email"], otp)
-
-                    if not sent:
-                        error = "Unable to send OTP. Please try again later."
-                        return render_template("admin/adminForgotPassword.html", error=error)
-                        
+                otp = generate_otp()
+                session["admin_otp"] = otp
+                session["admin_otp_time"] = time.time()
+                if send_otp_email(email, otp):
                     success = "A new OTP has been sent to your email."
+                else:
+                    error = "Unable to send OTP. Please try again later."
 
-            return render_template(
-                "admin/adminVerifyOtp.html",
-                error=error,
-                success=success,
-                remaining=remaining
-            )
-
-        if action == "verify":
+        elif action == "verify":
             user_otp = request.form.get("otp", "").strip()
-
             if not user_otp:
                 error = "Please enter the OTP."
-
             elif time.time() - session.get("admin_otp_time", 0) > 300:
                 error = "OTP expired. Please request a new one."
-
             elif user_otp != session.get("admin_otp"):
                 error = "Invalid OTP."
-
             else:
-                session["admin_reset_email"] = session["admin_otp_email"]
+                session["admin_reset_email"] = email
                 session.pop("admin_otp", None)
                 session.pop("admin_otp_email", None)
                 session.pop("admin_otp_time", None)
@@ -441,46 +420,33 @@ def verify_reset_otp():
         admin_campus=admin_campus
     )
 
+# ---------- Reset Password ----------
 @admin_bp.route("/reset-password", methods=["GET", "POST"])
 def reset_password():
     error = None
-
-    if "admin_reset_email" not in session:
+    email = session.get("admin_reset_email")
+    if not email:
         return redirect(url_for("admin.login"))
-    
+
     is_super_admin = session.get("is_super_admin", False)
 
     if request.method == "POST":
-        password = request.form["password"]
-        confirm = request.form["confirm"]
+        password = request.form.get("password")
+        confirm = request.form.get("confirm")
 
         if password != confirm:
             error = "Passwords do not match."
         else:
             hashed = generate_password_hash(password)
-
             conn = get_db_connection()
             cur = conn.cursor()
-
-            if is_super_admin:
-                cur.execute("""
-                    UPDATE super_admin
-                    SET password = %s
-                    WHERE email = %s
-                """, (hashed, session["admin_reset_email"]))
-            else:
-                cur.execute("""
-                    UPDATE admin
-                    SET password = %s
-                    WHERE email = %s
-                """, (hashed, session["admin_reset_email"]))
-                
+            table = "super_admin" if is_super_admin else "admin"
+            cur.execute(f"UPDATE {table} SET password = %s WHERE email = %s", (hashed, email))
             conn.commit()
             cur.close()
             conn.close()
 
             session.pop("admin_reset_email", None)
-
             return redirect(url_for("admin.login"))
 
     return render_template("admin/adminResetPassword.html", error=error)
@@ -3537,40 +3503,38 @@ def verify_email_change():
 
     data = session["email_change"]
 
+    # Expire OTP after 5 minutes
     if time.time() - data["time"] > 300:
         session.pop("email_change")
-        flash("Verification expired.", "error")
+        flash("Verification code expired. Please try again.", "error")
         return redirect(url_for("admin.adminProfile"))
 
     if request.method == "POST":
-        if request.form.get("action") == "back":
+        action = request.form.get("action")
+        if action == "back":
             session.pop("email_change")
             flash("Email change cancelled.", "info")
             return redirect(url_for("admin.adminProfile"))
 
         entered_otp = request.form.get("otp")
-
         data["attempts"] += 1
         session["email_change"] = data
 
+        # Max attempts
         if data["attempts"] >= 5:
             session.pop("email_change")
             flash("Too many failed attempts. Email change cancelled.", "error")
             return redirect(url_for("admin.adminProfile"))
 
         if entered_otp != data["otp"]:
-            flash(f"Invalid code. Attempts left: {5 - data['attempts']}", "error")
+            flash(f"Invalid OTP. Attempts left: {5 - data['attempts']}", "error")
             return redirect(url_for("admin.verify_email_change"))
 
+        # OTP correct → update email
         conn = get_db_connection()
         cur = conn.cursor()
-
-        cur.execute(f"""
-            UPDATE {data["table"]}
-            SET email = %s
-            WHERE username = %s
-        """, (data["new_email"], data["username"]))
-
+        cur.execute(f"UPDATE {data['table']} SET email = %s WHERE username = %s",
+                    (data["new_email"], data["username"]))
         conn.commit()
         cur.close()
         conn.close()
@@ -3587,19 +3551,19 @@ def resend_email_otp():
         flash("No email change request found.", "error")
         return redirect(url_for("admin.adminProfile"))
 
+    data = session["email_change"]
     otp = generate_otp()
+    data["otp"] = otp
+    data["time"] = time.time()
+    data["attempts"] = 0
+    session["email_change"] = data
 
-    session["email_change"]["otp"] = otp
-    session["email_change"]["time"] = time.time()
-    session["email_change"]["attempts"] = 0
-
-    send_otp_email(session["email_change"]["new_email"], otp)
-    sent = send_otp_email(session["email_change"]["new_email"], otp)
-
+    sent = send_otp_email(data["new_email"], otp)
     if not sent:
-        error = "Unable to send OTP. Please try again later."
-        return render_template("admin/adminForgotPassword.html", error=error)
-    flash("A new verification code has been sent.", "info")
+        flash("Unable to resend OTP. Please try again later.", "error")
+        return redirect(url_for("admin.adminProfile"))
+
+    flash("A new verification code has been sent to your email.", "info")
     return redirect(url_for("admin.verify_email_change"))
 
 @admin_bp.route("/logout")

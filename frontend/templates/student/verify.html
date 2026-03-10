@@ -40,6 +40,10 @@
         Email Verification
     </h2>
 
+    <p class="text-sm font-bold mb-2">
+        Enter the verification code sent to your email. <br> You can view it in "Spam" message
+    </p>
+
     {% if error %}
     <p class="text-red-600 text-center mb-3">{{ error }}</p>
     {% endif %}
@@ -58,10 +62,10 @@
         Verify OTP
     </button>
 <div class="flex justify-between">
-    <button onclick="window.history.back();" 
+    <a href="{{ url_for('student.studentlogin') }}" 
             class=" px-4 py-2 bg-[#EEEDED] text-black rounded hover:bg-gray-700 hover:text-white border border-[#166D3B]">
         ← 
-    </button>
+    </a>
     <button type="submit"
             name="resend"
             class="text-sm text-[#166D3B] w-fit underline">
