@@ -228,7 +228,7 @@ def home():
     return redirect(url_for("admin.login"))
 
 MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_MINUTES = 5
+LOCKOUT_MINUTES = 3
 
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():
@@ -3568,6 +3568,10 @@ def resend_email_otp():
 
 @admin_bp.route("/logout")
 def logout():
-    session.clear()
-    flash("You have been logged out.", "info")
+    session.pop("admin_username", None)
+    session.pop("last_activity", None)
+    session.pop("admin_login_attempts", None)
+    session.pop("admin_lock_until", None)
+
+    flash("Session expired due to inactivity.", "session_expired")
     return redirect(url_for("admin.login"))

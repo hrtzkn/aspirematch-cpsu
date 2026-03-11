@@ -13,7 +13,7 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "static")
 )
 app.secret_key = os.getenv("SECRET_KEY")
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=10)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=4)
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 if not os.path.exists(UPLOAD_FOLDER):

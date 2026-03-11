@@ -16,13 +16,30 @@
 <div class="flex items-center justify-center min-h-screen bg-[#f6ebcd] px-4">
   <main
     class="bg-white w-full max-w-md md:max-w-lg lg:max-w-xl
-           p-4 md:p-8 rounded-lg shadow-md"
+           p-4 md:p-8 rounded-lg shadow-md border border-green-600"
   >
+
+    <div class="fixed top-[65px] left-1/2 transform -translate-x-1/4 z-50">
+
+        <div class="bg-white shadow-lg px-6 py-2 rounded-md border text-center">
+
+            <div class="text-xs text-gray-500 font-medium">
+                Survey Time Remaining
+            </div>
+
+            <div id="surveyTimer" class="text-lg font-bold text-green-600">
+                15:00
+            </div>
+
+        </div>
+
+    </div>
+
     <form id="studentForm" class="space-y-4">
       <div id="preferredProgramDiv">
         <label for="preferredProgram"
                class="block text-base md:text-lg font-semibold mb-1">
-          Preferred Program:
+          Select Your Preferred Program:
         </label>
         <select
           id="preferredProgram"
@@ -30,7 +47,7 @@
           class="w-full border rounded-md p-2 text-sm md:text-base"
           required
         >
-          <option value="" selected disabled>Select Program</option>
+          <option value="" selected disabled>Programs</option>
           {% for program in programs %}
             <option value="{{ program[0] }}">
               {{ program[0] }}
@@ -48,6 +65,21 @@
         </div>
       </div>
       <div id="interestDiv" class="hidden">
+        <div class="mb-4">
+
+          <div class="flex justify-between text-sm font-medium mb-1">
+            <span id="progressText">Question 1 / 86</span>
+            <span id="progressPercent">0%</span>
+          </div>
+
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div id="progressBar"
+                class="bg-green-700 h-3 rounded-full transition-all duration-300"
+                style="width:0%">
+            </div>
+          </div>
+
+        </div>
         <h3 class="text-base md:text-lg font-semibold mb-4 text-center">
           Select your area of interest:
         </h3>
@@ -70,23 +102,35 @@
 
 
 <script>
-  const preferredProgram = document.getElementById("preferredProgram");
-  const preferredProgramDiv = document.getElementById("preferredProgramDiv");
-  const interestDiv = document.getElementById("interestDiv");
-  const interestOptions = document.getElementById("interestOptions");
-  const backBtn = document.getElementById("backBtn");
-  const nextBtn = document.getElementById("nextBtn");
-  const errorMsg = document.getElementById("errorMsg");
-  const aiResponseBox = document.getElementById("aiResponseBox");
-  const aiResponseWrapper = document.getElementById("aiResponseWrapper");
-  const aiResponseText = document.getElementById("aiResponseText");
-  const selectedInterest = document.getElementById("selectedInterest");
+const progressBar = document.getElementById("progressBar");
+const progressText = document.getElementById("progressText");
+const progressPercent = document.getElementById("progressPercent");
 
-  const surveyAnswers = {};
-  let selectedProgram = null;
-  let currentIndex = 0;
-  let surveySubmitting = false;
-  let questionLocked = false;
+const preferredProgram = document.getElementById("preferredProgram");
+const preferredProgramDiv = document.getElementById("preferredProgramDiv");
+const interestDiv = document.getElementById("interestDiv");
+const interestOptions = document.getElementById("interestOptions");
+
+const backBtn = document.getElementById("backBtn");
+const nextBtn = document.getElementById("nextBtn");
+
+const errorMsg = document.getElementById("errorMsg");
+
+const aiResponseWrapper = document.getElementById("aiResponseWrapper");
+const aiResponseText = document.getElementById("aiResponseText");
+const selectedInterest = document.getElementById("selectedInterest");
+
+let selectedProgram = null;
+let currentIndex = 0;
+let surveySubmitting = false;
+
+let surveyTime = 15 * 60; // 15 minutes in seconds
+
+const timerDisplay = document.getElementById("surveyTimer");
+
+/* IMPORTANT: fixed size answers array */
+const TOTAL_PAIRS = 86;
+const surveyAnswers = new Array(TOTAL_PAIRS).fill(null);
 
   const interestPairs = [
     [
@@ -435,169 +479,285 @@
     ]
   ];
 
-  preferredProgram.addEventListener("change", function () {
-    selectedProgram = this.value;
-    preferredProgramDiv.style.display = "none";
-    interestDiv.style.display = "block";
-    currentIndex = 0;
-    showPair(currentIndex);
-  });
 
-  function showPair(index) {
+/* PROGRAM SELECTED */
+preferredProgram.addEventListener("change", () => {
 
-    interestOptions.innerHTML = "";
+  selectedProgram = preferredProgram.value;
 
-    if (index > interestPairs.length) return;
-    // === SURVEY FINISHED ===
-    if (index >= interestPairs.length) {
+  preferredProgramDiv.style.display = "none";
+  interestDiv.style.display = "block";
 
-      if (!selectedProgram) {
-        alert("Please select preferred program.");
-        return;
-      }
+  currentIndex = 0;
 
-      for (let i = 0; i < interestPairs.length; i++) {
-        if (!surveyAnswers[i]) {
-          alert("Please complete all questions.");
-          return;
-        }
-      }
+  renderQuestion();
 
-      submitSurvey();
-      return;
-    }
+});
 
-    const pair = interestPairs[index];
 
-    const div = document.createElement("div");
-    div.classList.add("mb-4");
+/* RENDER QUESTION */
+function renderQuestion() {
 
-    div.innerHTML = `
+  updateProgress();
+
+  errorMsg.classList.add("hidden");
+
+  if (currentIndex < 0) currentIndex = 0;
+
+  if (currentIndex >= TOTAL_PAIRS) {
+    finishSurvey();
+    return;
+  }
+
+  const pair = interestPairs[currentIndex];
+
+  interestOptions.innerHTML = `
+    <div class="mb-4">
+
       <label class="block hover:bg-[#f6ebcd] border border-[#166D3B] rounded-md mb-2 p-2">
-        <input type="radio" name="interest${index}" value="${pair[0].key}">
+        <input type="radio" name="interest" value="${pair[0].key}">
         ${pair[0].key}. ${pair[0].text}
       </label>
 
       <label class="block hover:bg-[#f6ebcd] border border-[#166D3B] rounded-md p-2">
-        <input type="radio" name="interest${index}" value="${pair[1].key}">
+        <input type="radio" name="interest" value="${pair[1].key}">
         ${pair[1].key}. ${pair[1].text}
       </label>
-    `;
 
-    interestOptions.appendChild(div);
+    </div>
+  `;
 
-    if (surveyAnswers[index]) {
-      const prev = div.querySelector(`input[value="${surveyAnswers[index]}"]`);
-      if (prev) prev.checked = true;
+  /* Restore previous answer */
+  if (surveyAnswers[currentIndex]) {
+
+    const prev = interestOptions.querySelector(
+      `input[value="${surveyAnswers[currentIndex]}"]`
+    );
+
+    if (prev) prev.checked = true;
+
+  }
+
+  /* Enable Back button */
+  backBtn.style.display = currentIndex === 0 ? "none" : "inline-block";
+
+}
+
+
+/* RADIO CHANGE */
+let navigating = false;
+
+interestOptions.addEventListener("change", (e) => {
+
+  if (e.target.name !== "interest") return;
+  if (navigating) return;
+
+  navigating = true;
+
+  const letter = e.target.value;
+
+  surveyAnswers[currentIndex] = letter;
+
+  const chosenText = e.target.parentNode.textContent
+    .replace(letter + ".", "")
+    .trim();
+
+  /* Chatbot explanation */
+  fetch("/student/chatbot_receive_interest", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({letter:letter})
+  })
+  .then(res=>res.json())
+  .then(chat=>{
+    selectedInterest.textContent = `${letter} – ${chosenText}`;
+    aiResponseText.textContent = chat.reply;
+    aiResponseWrapper.classList.remove("hidden");
+  })
+  .catch(()=>{});
+
+  /* auto next (safe) */
+  setTimeout(() => {
+
+    if (currentIndex < TOTAL_PAIRS - 1) {
+      currentIndex++;
+      renderQuestion();
+    } else {
+      finishSurvey();
     }
 
-    /* BACK BUTTON */
-    backBtn.style.display = "inline-block";
-    backBtn.onclick = () => {
-      if (index === 0) {
-        interestDiv.style.display = "none";
-        preferredProgramDiv.style.display = "block";
-      } else {
-        currentIndex--;
-        showPair(currentIndex);
-      }
-    };
+    navigating = false;
 
-    /* RADIO CHANGE */
-    div.querySelectorAll("input").forEach(input => {
-      input.addEventListener("change", () => {
+  }, 150);
 
-        if (questionLocked) return;
-        questionLocked = true;
+});
 
-        errorMsg.classList.add("hidden");
 
-        const chosenLetter = input.value;
-        surveyAnswers[index] = chosenLetter;
+/* NEXT BUTTON */
+nextBtn.onclick = () => {
 
-        const chosenText = input.parentNode.textContent
-          .replace(`${chosenLetter}.`, "")
-          .trim();
+  if (navigating) return;
 
-        fetch("/student/chatbot_receive_interest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ letter: chosenLetter })
-        })
-        .then(res => res.json())
-        .then(chat => {
-          selectedInterest.textContent = `${chosenLetter} – ${chosenText}`;
-          aiResponseText.textContent = chat.reply;
-          aiResponseWrapper.classList.remove("hidden");
-        })
-        .catch(err => console.error("Chatbot error:", err));
+  const radios = document.querySelectorAll(`input[name="interest"]`);
 
-        currentIndex++;
-        showPair(currentIndex);
+  let selected = null;
 
-        questionLocked = false;
-      });
-    });
+  radios.forEach(r => {
+    if (r.checked) selected = r.value;
+  });
 
-    /* NEXT BUTTON */
-    nextBtn.onclick = () => {
-      const radios = document.querySelectorAll(`input[name="interest${currentIndex}"]`);
-      let selected = false;
+  /* if already answered before, allow next */
+  if (!selected && !surveyAnswers[currentIndex]) {
 
-      radios.forEach(r => {
-        if (r.checked) selected = true;
-      });
+    errorMsg.classList.remove("hidden");
+    return;
 
-      if (!selected) {
-        errorMsg.classList.remove("hidden");
-        return;
-      }
-
-      currentIndex++;
-      showPair(currentIndex);
-    };
   }
 
-  function submitSurvey() {
+  /* restore stored answer if unchanged */
+  if (!selected && surveyAnswers[currentIndex]) {
+    selected = surveyAnswers[currentIndex];
+  }
 
-    if (surveySubmitting) return;
-    surveySubmitting = true;
+  surveyAnswers[currentIndex] = selected;
+
+  currentIndex++;
+
+  renderQuestion();
+
+};
+
+
+/* BACK BUTTON */
+backBtn.onclick = () => {
+
+  currentIndex--;
+
+  renderQuestion();
+
+};
+
+
+/* FINISH SURVEY */
+function finishSurvey() {
+
+  if (!selectedProgram) {
+    alert("Please select preferred program.");
+    return;
+  }
+
+  /* ensure all answered */
+  for (let i = 0; i < TOTAL_PAIRS; i++) {
+
+    if (!surveyAnswers[i]) {
+      alert("Please complete all questions.");
+      currentIndex = i;
+      renderQuestion();
+      return;
+    }
+
+  }
+
+  submitSurvey();
+
+}
+
+
+/* SUBMIT */
+function submitSurvey(){
+
+  if(surveySubmitting) return;
+
+  surveySubmitting = true;
+
+  interestOptions.innerHTML =
+    "<p class='text-blue-600 font-semibold'>Submitting survey...</p>";
+
+  fetch("/student/submit_survey",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      preferred_program:selectedProgram,
+      answers:surveyAnswers
+    })
+  })
+  .then(res=>res.json())
+  .then(data=>{
+
+    if(data.status==="success"){
+
+      interestOptions.innerHTML =
+      "<p class='text-green-600 font-semibold'>Survey submitted successfully</p>";
+
+      setTimeout(()=>{
+        window.location.href="/student/home";
+      },1500);
+
+    }else{
+
+      interestOptions.innerHTML =
+      "<p class='text-red-600 font-semibold'>"+data.message+"</p>";
+
+    }
+
+  })
+  .catch(()=>{
 
     interestOptions.innerHTML =
-      "<p class='text-blue-600 font-semibold'>Submitting survey...</p>";
+    "<p class='text-red-600 font-semibold'>Submission failed</p>";
 
-    fetch("/student/submit_survey", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        preferred_program: selectedProgram,
-        answers: surveyAnswers
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === "success") {
-        interestOptions.innerHTML =
-          "<p class='text-green-600 font-semibold'>✅ Survey submitted successfully!</p>";
+  });
 
-        setTimeout(() => {
-          window.location.href = "/student/home";
-        }, 1500);
+}
 
-      } else {
-        interestOptions.innerHTML =
-          `<p class='text-red-600 font-semibold'>${data.message}</p>`;
-      }
-    })
-    .catch(err => {
-      console.error("Submission error:", err);
-      interestOptions.innerHTML =
-        "<p class='text-red-600 font-semibold'>Submission failed. Please try again.</p>";
-    });
-  }
+function updateProgress(){
 
+  const total = TOTAL_PAIRS;
+  const current = currentIndex + 1;
+
+  const percent = Math.round((current / total) * 100);
+
+  progressBar.style.width = percent + "%";
+
+  progressText.textContent = `Question ${current} / ${total}`;
+  progressPercent.textContent = percent + "%";
+
+}
+
+function startSurveyTimer(){
+
+    const timer = setInterval(() => {
+
+        const minutes = Math.floor(surveyTime / 60);
+        const seconds = surveyTime % 60;
+
+        timerDisplay.textContent =
+            `${minutes}:${seconds.toString().padStart(2,'0')}`;
+
+        // Change color when 1 minute remaining
+        if(surveyTime <= 60){
+            timerDisplay.classList.remove("text-green-600");
+            timerDisplay.classList.add("text-red-600");
+        }
+
+        // TIME UP
+        if(surveyTime <= 0){
+
+            clearInterval(timer);
+
+            alert("Time is up. You will be logged out.");
+
+            window.location.href = "/student/logout";
+
+        }
+
+        surveyTime--;
+
+    },1000);
+
+}
+
+startSurveyTimer();
 </script>
 
 </body>

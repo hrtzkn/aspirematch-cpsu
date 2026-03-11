@@ -864,6 +864,9 @@ def survey():
 def surveyForm():
     if "student_id" not in session:
         return redirect(url_for("student.login_page"))
+
+    session["survey_start"] = time.time()
+
     student_id = session["student_id"]
     conn = get_db_connection()
     cur = conn.cursor()
@@ -891,9 +894,17 @@ def surveyForm():
 
 @student_bp.route("/submit_survey", methods=["POST"])
 def submit_survey():
+
     if "student_id" not in session or "exam_id" not in session:
         return jsonify({"status": "error", "message": "Not logged in"}), 403
 
+    if "survey_start" not in session or time.time() - session["survey_start"] > 900:
+        session.clear()  # log out student
+        return jsonify({
+            "status": "error",
+            "message": "Time expired. Survey not saved."
+        }), 403
+    
     data = request.json
     preferred_program = data.get("preferred_program")
     answers = data.get("answers")
@@ -906,45 +917,72 @@ def submit_survey():
     if not answers or len(answers) != TOTAL_PAIRS:
         return jsonify({"status": "error", "message": "Survey incomplete"}), 400
 
+
     try:
+
         conn = get_db_connection()
         cur = conn.cursor()
 
-        formatted_answers = {}
-        for k, v in answers.items():
-            formatted_answers[f"pair{int(k)+1}"] = v
+        # create pair1..pair86 columns automatically
+        columns = []
+        values = []
 
-        columns = ", ".join(formatted_answers.keys())
-        placeholders = ", ".join(["%s"] * len(formatted_answers))
-        values = list(formatted_answers.values())
+        for i in range(TOTAL_PAIRS):
+
+            col = f"pair{i+1}"
+            columns.append(col)
+            values.append(answers[i])
+
+        column_sql = ", ".join(columns)
+        placeholder_sql = ", ".join(["%s"] * TOTAL_PAIRS)
+
+
+        query = f"""
+            INSERT INTO student_survey_answer
+            (exam_id, student_id, preferred_program, {column_sql})
+            VALUES (%s, %s, %s, {placeholder_sql})
+        """
+
 
         cur.execute(
-            f"""
-            INSERT INTO student_survey_answer
-            (exam_id, student_id, {columns}, preferred_program)
-            VALUES (%s, %s, {placeholders}, %s)
-            """,
-            (session["exam_id"], session["student_id"], *values, preferred_program)
+            query,
+            (
+                session["exam_id"],
+                session["student_id"],
+                preferred_program,
+                *values
+            )
         )
 
+
+        # notification
         cur.execute("""
-            INSERT INTO notifications (student_id, exam_id, message, is_read)
+            INSERT INTO notifications
+            (student_id, exam_id, message, is_read)
             VALUES (%s, %s, %s, FALSE)
-        """, (
+        """,(
             session["student_id"],
             session["exam_id"],
             "Career Interest Survey Completed!"
         ))
 
+
         conn.commit()
+
         cur.close()
         conn.close()
 
-        return jsonify({"status": "success"})
+        return jsonify({"status":"success"})
+
 
     except Exception as e:
-        print("Error:", e)
-        return jsonify({"status": "error", "message": "Failed to save survey"}), 500
+
+        print("Survey Save Error:", e)
+
+        return jsonify({
+            "status":"error",
+            "message":"Failed to save survey"
+        }),500
     
 @student_bp.route("/notification")
 def notification():
