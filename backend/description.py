@@ -52,94 +52,94 @@ import random
 
 ai_responses = {
     "A": [
-        "🎨 Nice! That shows you're into creative and technical work.",
-        "✨ Cool pick! You enjoy hands-on creative tasks.",
-        "🛠️ Looks like you love blending creativity with technology!"
+        "That shows you're into creative and technical work.",
+        "You enjoy hands-on creative tasks.",
+        "Looks like you love blending creativity with technology!"
     ],
     "B": [
-        "🔬 You seem to enjoy science and solving problems!",
-        "🧠 Nice! You like analyzing and figuring things out.",
-        "⚗️ You’re definitely into exploration and scientific thinking."
+        "You seem to enjoy science and solving problems!",
+        "You like analyzing and figuring things out.",
+        "You’re definitely into exploration and scientific thinking."
     ],
     "C": [
-        "🌿 You really enjoy nature and outdoor activities!",
-        "🌱 Nice choice! You like working with plants and the environment.",
-        "🍃 Looks like you're happiest doing hands-on outdoor tasks."
+        "You really enjoy nature and outdoor activities!",
+        "You like working with plants and the environment.",
+        "Looks like you're happiest doing hands-on outdoor tasks."
     ],
     "D": [
-        "📝 You’re great at expressing ideas and writing!",
-        "📚 You seem to enjoy communication and detailed tasks.",
-        "✍️ You definitely have a talent for organizing thoughts into writing."
+        "You’re great at expressing ideas and writing!",
+        "You seem to enjoy communication and detailed tasks.",
+        "You definitely have a talent for organizing thoughts into writing."
     ],
     "E": [
-        "📊 You enjoy analyzing things and making sense of information!",
-        "🧾 Looks like you're someone who enjoys structured tasks.",
-        "🧮 Numbers and details seem to fit your style!"
+        "You enjoy analyzing things and making sense of information!",
+        "Looks like you're someone who enjoys structured tasks.",
+        "Numbers and details seem to fit your style!"
     ],
     "F": [
-        "🔧 You enjoy hands-on tasks and working with equipment!",
-        "⚙️ You like operating machines and practical work.",
-        "🛠️ You're very mechanically inclined!"
+        "You enjoy hands-on tasks and working with equipment!",
+        "You like operating machines and practical work.",
+        "You're very mechanically inclined!"
     ],
     "G": [
-        "🏢 You prefer organized office or business environments!",
-        "📂 You’re comfortable in structured, professional settings.",
-        "📋 You like organization, planning, and clear workflows."
+        "You prefer organized office or business environments!",
+        "You’re comfortable in structured, professional settings.",
+        "You like organization, planning, and clear workflows."
     ],
     "H": [
-        "💬 You're great with people — talking and helping customers!",
-        "🤝 You enjoy interacting and connecting with others.",
-        "📣 Looks like you're friendly and service-oriented!"
+        "You're great with people — talking and helping customers!",
+        "You enjoy interacting and connecting with others.",
+        "Looks like you're friendly and service-oriented!"
     ],
     "I": [
-        "🏨 You enjoy hospitality and helping people feel welcome!",
-        "✈️ You like travel, tourism, and creating good experiences.",
-        "🍽️ You’re drawn to hospitality and event-related tasks!"
+        "You enjoy hospitality and helping people feel welcome!",
+        "You like travel, tourism, and creating good experiences.",
+        "You’re drawn to hospitality and event-related tasks!"
     ],
     "J": [
-        "❤️ You love helping and supporting others!",
-        "🤗 You’re someone who cares deeply about people.",
-        "🧑‍🤝‍🧑 You enjoy guiding and assisting others emotionally or socially."
+        "You love helping and supporting others!",
+        "You’re someone who cares deeply about people.",
+        "You enjoy guiding and assisting others emotionally or socially."
     ],
     "K": [
-        "🏛️ You seem drawn to public service and government work!",
-        "🗳️ You like structure, rules, and helping communities.",
-        "📜 You enjoy roles that involve responsibility and leadership."
+        "You seem drawn to public service and government work!",
+        "You like structure, rules, and helping communities.",
+        "You enjoy roles that involve responsibility and leadership."
     ],
     "L": [
-        "📐 You enjoy planning, designing, or building things!",
-        "🏗️ You're creative and technical — a great combo!",
-        "🎨 You’re into design and shaping environments."
+        "You enjoy planning, designing, or building things!",
+        "You're creative and technical — a great combo!",
+        "You’re into design and shaping environments."
     ],
     "M": [
-        "🎓 You enjoy teaching and helping people learn!",
-        "📖 You're patient and great at guiding others.",
-        "🧑‍🏫 You have a talent for sharing knowledge."
+        "You enjoy teaching and helping people learn!",
+        "You're patient and great at guiding others.",
+        "You have a talent for sharing knowledge."
     ],
     "N": [
-        "💰 You like working with numbers and planning!",
-        "📊 Finance or business seems to match your style.",
-        "🧮 You're organized and detail-oriented about money matters."
+        "You like working with numbers and planning!",
+        "Finance or business seems to match your style.",
+        "You're organized and detail-oriented about money matters."
     ],
     "O": [
-        "🩺 You seem interested in health and helping people stay well!",
-        "💊 You care about wellness and medical assistance.",
-        "👩‍⚕️ You're drawn to healthcare and service."
+        "You seem interested in health and helping people stay well!",
+        "You care about wellness and medical assistance.",
+        "You're drawn to healthcare and service."
     ],
     "P": [
-        "💻 You’re definitely into computers and technology!",
-        "🖱️ You enjoy learning how things work digitally.",
-        "🧑‍💻 You're tech-minded and curious."
+        "You’re definitely into computers and technology!",
+        "You enjoy learning how things work digitally.",
+        "You're tech-minded and curious."
     ],
     "Q": [
-        "🐾 You enjoy animals and caring for them!",
-        "🐕 You love working with pets or wildlife.",
-        "🦜 You're drawn to nature and animal care."
+        "You enjoy animals and caring for them!",
+        "You love working with pets or wildlife.",
+        "You're drawn to nature and animal care."
     ],
     "R": [
-        "🚚 You’re interested in transportation and logistics!",
-        "📦 You like organizing movement and deliveries.",
-        "🛣️ You enjoy tasks involving travel and coordination."
+        "You’re interested in transportation and logistics!",
+        "You like organizing movement and deliveries.",
+        "You enjoy tasks involving travel and coordination."
     ]
 }
 

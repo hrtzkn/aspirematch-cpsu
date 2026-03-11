@@ -44,54 +44,47 @@
     <div class="flex items-center space-x-2 sm:space-x-3">
 
         <!-- CHAT -->
-        <div class="relative">
-            <div id="chat-button"
-                class="bg-[#f6ebcd] text-[#166D3B]
-                       p-2 sm:p-3
-                       rounded-full shadow-lg cursor-pointer">
-                💬
-            </div>
+<div class="relative">
+    <div id="chat-button" class="cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-14">
+            <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 0 1-.814 1.686.75.75 0 0 0 .44 1.223ZM8.25 10.875a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25ZM10.875 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875-1.125a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25Z" clip-rule="evenodd" />
+        </svg>
+    </div>
 
-            <!-- CHAT PANEL -->
-            <div id="chat-panel"
-                class="hidden fixed
-                    text-start
-                    bottom-4 right-2
-                    top-48 md:top-24 md:right-6
-                    w-80 md:w-96
-                    h-[60vh] md:h-[80vh]
-                    bg-white rounded-t-xl md:rounded-xl
-                    shadow-xl p-3 md:p-4
-                    flex flex-col z-50">
+    <!-- CHAT PANEL -->
+    <div id="chat-panel" class="hidden fixed
+        text-start bottom-4 right-2 top-48 md:top-24 md:right-6
+        w-80 md:w-96 h-[60vh] md:h-[80vh]
+        bg-white rounded-t-xl md:rounded-xl
+        shadow-xl p-3 md:p-4 flex flex-col z-50">
 
-                <div class="text-black mb-2">
-                    <span class="font-semibold text-sm">Chat with Dan</span>
-                </div>
-
-                <!-- MESSAGES -->
-                <div id="chat-messages"
-                     class="flex-1 overflow-y-auto pb-2"></div>
-
-                <!-- TYPING -->
-                <div id="typingIndicator"
-                     class="hidden p-1 text-xs text-gray-600 italic">
-                    Dan is typing...
-                </div>
-
-                <!-- INPUT -->
-                <div class="mt-2 flex">
-                    <input id="chat-input"
-                        class="flex-grow text-[#166D3B]
-                               p-2 border border-black rounded-l text-sm"
-                        placeholder="Ask Dan...">
-
-                    <button id="chat-send"
-                        class="bg-[#166D3B] text-white px-4 rounded-r text-sm">
-                        Send
-                    </button>
-                </div>
-            </div>
+        <div class="text-black mb-2">
+            <span class="font-semibold text-sm">Chat with Dan</span>
         </div>
+
+        <!-- QUICK BUTTONS -->
+        <div id="chat-quick-buttons" class="flex flex-wrap gap-2 mb-2">
+            <button onclick="sendPredefined('Tell me about my career')" class="px-2 py-1 bg-[#166D3B] rounded text-sm text-white">Career</button>
+            <button onclick="sendPredefined('Give me program recommendations')" class="px-2 py-1 bg-[#166D3B] rounded text-sm text-white">Recommendation</button>
+            <button onclick="sendPredefined('What is this survey about?')" class="px-2 py-1 bg-[#166D3B] rounded text-sm text-white">Survey</button>
+        </div>
+
+        <!-- MESSAGES -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto pb-2"></div>
+
+        <!-- TYPING -->
+        <div id="typingIndicator" class="hidden p-1 text-xs text-gray-600 italic">
+            Dan is typing...
+        </div>
+
+        <!-- INPUT -->
+        <div class="mt-2 flex">
+            <input id="chat-input" class="flex-grow text-[#166D3B]
+                p-2 border border-black rounded-l text-sm" placeholder="Ask Dan...">
+            <button id="chat-send" class="bg-[#166D3B] text-white px-4 rounded-r text-sm">Send</button>
+        </div>
+    </div>
+</div>
 
         <!-- PROFILE -->
         <div class="relative group">
@@ -110,7 +103,7 @@
             </div>
 
             <a href="{{ url_for('student.login_page') }}"
-               class="absolute left-1/2 -translate-x-1/2 mt-1
+               class="absolute left-1/2 -translate-x-1/4 mt-1
                       px-2 py-1 text-sm
                       bg-red-600 text-white rounded-md
                       opacity-0 group-hover:opacity-100 transition">
@@ -120,6 +113,12 @@
 
     </div>
 </header>
+<div id="student-data" data-student-id="{{ session['student_id'] }}"></div>
+<script>
+const STUDENT_ID = document
+  .getElementById("student-data")
+  .dataset.studentId;
+</script>
 
 <script>
 const chatButton = document.getElementById("chat-button");
@@ -129,6 +128,7 @@ const chatInput = document.getElementById("chat-input");
 const messagesDiv = document.getElementById("chat-messages");
 const typingIndicator = document.getElementById("typingIndicator");
 
+// Toggle chat panel
 chatButton.addEventListener("click", (e) => {
     e.stopPropagation();
     chatPanel.classList.toggle("hidden");
@@ -140,44 +140,54 @@ document.addEventListener("click", (e) => {
     }
 });
 
-chatPanel.addEventListener("click", (e) => {
-    e.stopPropagation();
-});
+chatPanel.addEventListener("click", (e) => e.stopPropagation());
 
+// Send predefined quick button messages
+function sendPredefined(msg) {
+    chatInput.value = msg;
+    sendMessage();
+}
+
+// Send message function
 async function sendMessage() {
     const msg = chatInput.value.trim();
     if (!msg) return;
 
+    // Append user message
     messagesDiv.innerHTML += `
         <div class="p-2 bg-gray-200 rounded text-[#166D3B] mb-2">
             You: ${msg}
         </div>
     `;
 
+    saveChatHistory();
+    
     chatInput.value = "";
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
     showTyping();
 
+    // Fetch AI reply
     const res = await fetch("/student/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
+        body: JSON.stringify({ message: msg, student_id: STUDENT_ID }) // STUDENT_ID from session
     });
 
     const data = await res.json();
-
     hideTyping();
+
     messagesDiv.innerHTML += `
         <div class="p-2 bg-[#166D3B] text-white rounded mb-2">
             Dan: ${data.reply}
         </div>
     `;
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    saveChatHistory();
 }
 
+// Enter key support
 chatSend.addEventListener("click", sendMessage);
-
 chatInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
         e.preventDefault();
@@ -185,13 +195,19 @@ chatInput.addEventListener("keydown", (e) => {
     }
 });
 
-function showTyping() {
-    typingIndicator.classList.remove("hidden");
+// Typing indicator
+function showTyping() { typingIndicator.classList.remove("hidden"); }
+function hideTyping() { typingIndicator.classList.add("hidden"); }
+
+// Save chat to localStorage
+function saveChatHistory() {
+    localStorage.setItem("danChatHistory", messagesDiv.innerHTML);
 }
 
-function hideTyping() {
-    typingIndicator.classList.add("hidden");
-}
+window.addEventListener("load", () => {
+    const saved = localStorage.getItem("danChatHistory");
+    if (saved) messagesDiv.innerHTML = saved;
+});
 </script>
 
 <!--

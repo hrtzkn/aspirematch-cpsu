@@ -1,4 +1,4 @@
-let inactivityTime = 1 * 60 * 1000; // 3 minutes
+let inactivityTime = 3 * 60 * 1000; // 3 minutes
 let inactivityTimer;
 
 function resetTimer() {

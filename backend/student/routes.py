@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, make_response, send_file, current_app
 from ..db import get_db_connection
+from psycopg2.extras import RealDictCursor
 import psycopg2
 import psycopg2.extras
 import os
@@ -66,6 +67,31 @@ def ask_ai(messages, temperature=0.3, max_tokens=700):
     )
 
     return response.choices[0].message.content
+
+def is_ask_about_aspirematch(question):
+    """
+    Returns True if the question is likely about AspireMatch,
+    otherwise False.
+    """
+    # Keywords related to AspireMatch
+    keywords = [
+        "career", "survey", "recommendation", "result",
+        "dashboard", "guidance", "report", "aspirematch"
+    ]
+    question_lower = question.lower()
+    return any(keyword in question_lower for keyword in keywords)
+
+SYSTEM_PROMPT = (
+    "You are Dan, the friendly AI assistant for AspireMatch. "
+    "AspireMatch is a student career interest recommendation application. "
+    "You can answer questions about the app, including career surveys, survey results, career recommendations, "
+    "student dashboards, guidance counselor reports, and system usage. "
+    "When a student's survey data is provided, summarize it in simple, concise, supportive language, "
+    "highlighting the most important points: Career Letter Explanation, Strengths, Weaknesses, and Personalized Career Advice. "
+    "Keep it short and easy to read for a student. "
+    "If a user asks anything outside of AspireMatch, politely respond: "
+    "'I'm sorry, I can only answer questions related to the AspireMatch.'"
+)
 
 def generate_ai_insights(top_letters, preferred_program, fullname):
     letters_str = ", ".join(top_letters)
@@ -483,47 +509,173 @@ def verify():
 
 @student_bp.route("/chatbot", methods=["POST"])
 def chatbot():
-    user_msg = request.json.get("message", "").lower()
-
-    if "strength" in user_msg:
+    user_msg = request.json.get("message", "").strip()
+    student_id = request.json.get("student_id")
+    print("Student ID received:", student_id)
+    if not is_ask_about_aspirematch(user_msg):
         return jsonify({
-            "reply": "Your strengths are tied to your top survey letters. These represent activities you naturally enjoy and can excel at. Want me to explain each letter’s strengths?"
-        })
-
-    if "weakness" in user_msg:
-        return jsonify({
-            "reply": "I can help identify your potential weaknesses based on your career interest profile. Tell me which letter you want to understand better."
-        })
-
-    if "course" in user_msg or "suggest" in user_msg:
-        return jsonify({
-            "reply": "Based on your career results, I can suggest relevant courses. What program are you interested in exploring?"
-        })
-
-    if "explain" in user_msg and "result" in user_msg:
-        return jsonify({
-            "reply": "Sure! Your career result shows what type of work environment fits you best. Ask me anything about your top letters!"
+            "reply": "I can only answer questions related to AspireMatch such as survey results or program recommendations."
         })
 
     try:
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "Your name is Dan. You are a friendly AI assistant in the AspireMatch system. "
-                    "Answer clearly, simply, and in a supportive tone."
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        top3 = []
+        programs = []
+        student_context = ""
+
+        if student_id:
+
+            pair_columns = ", ".join([f"ss.pair{i}" for i in range(1, 87)])
+
+            cur.execute(f"""
+                SELECT s.fullname, ss.ai_explanation, {pair_columns}
+                FROM student s
+                JOIN student_survey_answer ss
+                ON s.id = ss.student_id
+                WHERE s.id = %s
+                ORDER BY ss.id DESC
+                LIMIT 1
+            """, (student_id,))
+
+            result = cur.fetchone()
+
+            if result:
+
+                # Safe ai_explanation
+                ai_text = result.get("ai_explanation") or ""
+                ai_explanation = ai_text[:300] + ("..." if len(ai_text) > 300 else "")
+
+                student_context = f"{result['fullname']} career summary: {ai_explanation}"
+
+                # Collect letters
+                pair_letters = [
+                    result.get(f"pair{i}")
+                    for i in range(1, 87)
+                    if result.get(f"pair{i}")
+                ]
+
+                letter_count = Counter(pair_letters)
+                top3 = letter_count.most_common(3)
+
+                # Program recommendation
+                if top3:
+                    letters = [l for l, _ in top3]
+
+                    cur.execute("""
+                        SELECT program_name, category_letter, category_description
+                        FROM program
+                        WHERE category_letter = ANY(%s)
+                    """, (letters,))
+
+                    programs = cur.fetchall()
+
+        msg = user_msg.lower()
+
+        # ----------------------
+        # CAREER RESULT
+        # ----------------------
+        if "career" in msg:
+
+            if not top3:
+                return jsonify({"reply": "Your survey results are not available yet."})
+
+            reply = "Based on Survey Your Top Career Interests:\n\n"
+
+            for letter, _ in top3:
+                description = letter_descriptions.get(letter, "")
+                ai_message = ai_responses.get(letter, [""])[0]
+                reply += f"{letter} – {description}\n{ai_message}\n\n"
+
+            return jsonify({"reply": reply})
+
+        # ----------------------
+        # PROGRAM RECOMMENDATION
+        # ----------------------
+        if "recommend" in msg or "program" in msg or "course" in msg:
+
+            if not top3:
+                return jsonify({"reply": "Your survey results are not available yet."})
+
+            top_letters = [letter for letter, _ in top3]
+
+            # Fetch programs where category_letter overlaps with top_letters
+            cur.execute("""
+                SELECT program_name, category_letter
+                FROM program
+                WHERE string_to_array(category_letter, ',') && %s
+                LIMIT 5
+            """, (top_letters,))
+
+            programs = cur.fetchall()
+
+            if not programs:
+                return jsonify({"reply": "No program recommendations found yet."})
+
+            reply = "📚 Recommended Programs Based on Your Top Career Letters:\n\n"
+
+            for prog in programs:
+                # Determine which of student's letters match this program
+                program_letters = prog['category_letter'].split(',')
+                matched_letters = [l for l in top_letters if l in program_letters]
+
+                # Explanation based on matched letters
+                explanation = f"This program matches your top interests {', '.join(matched_letters)}."
+
+                # Random AI-style explanation from ai_responses based on matched letters
+                ai_msgs = []
+                for l in matched_letters:
+                    if l in ai_responses:
+                        ai_msgs.append(random.choice(ai_responses[l]))
+
+                ai_explanation = " ".join(ai_msgs) if ai_msgs else explanation
+
+                reply += f"- {prog['program_name']}: {explanation} {ai_explanation}\n"
+
+            return jsonify({"reply": reply.strip()})
+        
+        # ----------------------
+        # SURVEY RESULT
+        # ----------------------
+        if "result" in msg:
+
+            if not result or not result.get("ai_explanation"):
+                return jsonify({"reply": "Your survey results are not available yet."})
+
+            ai_text = result["ai_explanation"]
+            reply = f"📄 Your AspireMatch Survey Result:\n\n{ai_text}"
+
+            return jsonify({"reply": reply})
+
+        # ----------------------
+        # SURVEY INFO
+        # ----------------------
+        if "survey" in msg:
+
+            return jsonify({
+                "reply": (
+                    "The AspireMatch survey identifies which CPSU programs best match "
+                    "your interests and strengths based on your answers."
                 )
-            },
+            })
+
+        # ----------------------
+        # AI FALLBACK
+        # ----------------------
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_msg}
         ]
 
-        reply = ask_ai(messages, temperature=0.4, max_tokens=300)
+        reply = ask_ai(messages)
 
         return jsonify({"reply": reply})
 
-    except Exception:
+    except Exception as e:
+        print("Chatbot error:", e)
         return jsonify({
-            "reply": "Sorry, I'm having trouble responding right now. Please try again later."
+            "reply": "Something went wrong while processing your request."
         }), 500
 
 @student_bp.route("/chatbot_receive_interest", methods=["POST"])
