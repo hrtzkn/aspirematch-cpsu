@@ -62,13 +62,6 @@
             <span class="font-semibold text-sm">Chat with Dan</span>
         </div>
 
-        <!-- QUICK BUTTONS -->
-        <div id="chat-quick-buttons" class="flex flex-wrap gap-2 mb-2">
-            <button onclick="sendPredefined('Tell me about my career')" class="px-2 py-1 bg-[#166D3B] rounded text-sm text-white">Career</button>
-            <button onclick="sendPredefined('Give me program recommendations')" class="px-2 py-1 bg-[#166D3B] rounded text-sm text-white">Recommendation</button>
-            <button onclick="sendPredefined('What is this survey about?')" class="px-2 py-1 bg-[#166D3B] rounded text-sm text-white">Survey</button>
-        </div>
-
         <!-- MESSAGES -->
         <div id="chat-messages" class="flex-1 overflow-y-auto pb-2"></div>
 
@@ -201,12 +194,20 @@ function hideTyping() { typingIndicator.classList.add("hidden"); }
 
 // Save chat to localStorage
 function saveChatHistory() {
-    localStorage.setItem("danChatHistory", messagesDiv.innerHTML);
+    localStorage.setItem("danChatHistory_" + STUDENT_ID, messagesDiv.innerHTML);
 }
 
 window.addEventListener("load", () => {
-    const saved = localStorage.getItem("danChatHistory");
-    if (saved) messagesDiv.innerHTML = saved;
+    const saved = localStorage.getItem("danChatHistory_" + STUDENT_ID);
+
+    if (saved) {
+        messagesDiv.innerHTML = saved;
+
+        // Scroll to latest message
+        setTimeout(() => {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }, 50);
+    }
 });
 </script>
 
