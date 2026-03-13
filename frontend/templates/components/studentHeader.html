@@ -106,6 +106,7 @@
 
     </div>
 </header>
+
 <div id="student-data" data-student-id="{{ session['student_id'] }}"></div>
 <script>
 const STUDENT_ID = document
@@ -224,6 +225,6 @@ window.addEventListener("load", () => {
 //    }
 //});
 -->
-
+<script src="{{ url_for('static', filename='js/student_auto_logout.js') }}"></script>
 </body>
 </html>

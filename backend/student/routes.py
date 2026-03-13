@@ -17,7 +17,7 @@ from calendar import monthrange
 import datetime
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 student_bp = Blueprint('student', __name__, template_folder='../../frontend/templates/student')
 
@@ -325,6 +325,8 @@ def studentlogin():
                 # Login student
                 session["student_id"] = student_id
                 session["exam_id"] = exam_id
+                session["last_activity"] = datetime.now(timezone.utc)
+                session.permanent = True
 
                 # Check if survey already answered
                 cur.execute(
@@ -1046,17 +1048,17 @@ def surveyForm():
 
 @student_bp.route("/submit_survey", methods=["POST"])
 def submit_survey():
+    import time
 
+    # --- 1️⃣ Session validation ---
     if "student_id" not in session or "exam_id" not in session:
         return jsonify({"status": "error", "message": "Not logged in"}), 403
 
-    if "survey_start" not in session or time.time() - session["survey_start"] > 900:
-        session.clear()  # log out student
-        return jsonify({
-            "status": "error",
-            "message": "Time expired. Survey not saved."
-        }), 403
-    
+    if "survey_start" not in session or time.time() - session["survey_start"] > 15*60:
+        session.clear()
+        return jsonify({"status": "error", "message": "Time expired. Survey not saved."}), 403
+
+    # --- 2️⃣ Get data ---
     data = request.json
     preferred_program = data.get("preferred_program")
     answers = data.get("answers")
@@ -1066,75 +1068,59 @@ def submit_survey():
     if not preferred_program:
         return jsonify({"status": "error", "message": "Preferred program required"}), 400
 
-    if not answers or len(answers) != TOTAL_PAIRS:
-        return jsonify({"status": "error", "message": "Survey incomplete"}), 400
+    if not answers:
+        return jsonify({"status": "error", "message": "No survey answers provided"}), 400
 
+    # Ensure exactly 86 answers
+    if len(answers) < TOTAL_PAIRS:
+        answers += [None] * (TOTAL_PAIRS - len(answers))
+    elif len(answers) > TOTAL_PAIRS:
+        answers = answers[:TOTAL_PAIRS]
 
     try:
-
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # create pair1..pair86 columns automatically
-        columns = []
-        values = []
-
-        for i in range(TOTAL_PAIRS):
-
-            col = f"pair{i+1}"
-            columns.append(col)
-            values.append(answers[i])
-
+        # --- 3️⃣ Prepare SQL ---
+        columns = [f"pair{i+1}" for i in range(TOTAL_PAIRS)]
         column_sql = ", ".join(columns)
         placeholder_sql = ", ".join(["%s"] * TOTAL_PAIRS)
-
 
         query = f"""
             INSERT INTO student_survey_answer
             (exam_id, student_id, preferred_program, {column_sql})
             VALUES (%s, %s, %s, {placeholder_sql})
+            ON CONFLICT (exam_id, student_id) DO UPDATE SET
+                preferred_program = EXCLUDED.preferred_program,
+                {', '.join([f"{c} = EXCLUDED.{c}" for c in columns])}
         """
 
+        cur.execute(query, (
+            session["exam_id"],
+            session["student_id"],
+            preferred_program,
+            *answers
+        ))
 
-        cur.execute(
-            query,
-            (
-                session["exam_id"],
-                session["student_id"],
-                preferred_program,
-                *values
-            )
-        )
-
-
-        # notification
+        # --- 4️⃣ Notification ---
         cur.execute("""
-            INSERT INTO notifications
-            (student_id, exam_id, message, is_read)
+            INSERT INTO notifications (student_id, exam_id, message, is_read)
             VALUES (%s, %s, %s, FALSE)
-        """,(
+        """, (
             session["student_id"],
             session["exam_id"],
             "Career Interest Survey Completed!"
         ))
 
-
         conn.commit()
-
         cur.close()
         conn.close()
 
-        return jsonify({"status":"success"})
-
+        return jsonify({"status": "success"})
 
     except Exception as e:
-
         print("Survey Save Error:", e)
-
-        return jsonify({
-            "status":"error",
-            "message":"Failed to save survey"
-        }),500
+        return jsonify({"status": "error", "message": "Failed to save survey"}), 500
     
 @student_bp.route("/notification")
 def notification():
@@ -2670,5 +2656,5 @@ def upload_student_photo():
 @student_bp.route("/logout")
 def logout():
     session.clear()
-    flash("Logged out successfully.", "info")
+    flash("Session expired due to inactivity.", "session_expired")
     return redirect(url_for("student.login_page"))

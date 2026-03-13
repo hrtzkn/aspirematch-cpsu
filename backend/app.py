@@ -22,6 +22,10 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 @app.before_request
 def check_session_timeout():
+
+    now = datetime.now(timezone.utc)
+    timeout = app.permanent_session_lifetime.total_seconds()
+
     if request.blueprint == "admin":
 
         if request.endpoint == "admin.login":
@@ -44,6 +48,28 @@ def check_session_timeout():
                 session.pop("admin_login_attempts", None)
                 session.pop("admin_lock_until", None)
                 return redirect(url_for("admin.login"))
+
+        session["last_activity"] = now
+        session.permanent = True
+
+    # -------- STUDENT CHECK --------
+    if request.blueprint == "student":
+
+        if request.endpoint in ["student.studentlogin", "student.login_page"]:
+            return
+
+        if "student_id" not in session:
+            return
+
+        last_activity = session.get("last_activity")
+
+        if last_activity:
+            idle_time = (now - last_activity).total_seconds()
+
+            if idle_time > timeout:
+                flash("Session expired due to inactivity.", "session_expired")
+                session.clear()
+                return redirect(url_for("student.login_page"))
 
         session["last_activity"] = now
         session.permanent = True
