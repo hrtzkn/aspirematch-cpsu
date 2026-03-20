@@ -2610,7 +2610,7 @@ def adminInventoryResult():
             sf.psychiatrist_before, sf.psychiatrist_reason, sf.psychiatrist_when,
             sf.psychologist_before, sf.psychologist_reason, sf.psychologist_when,
             sf.counselor_before, sf.counselor_reason, sf.counselor_when,
-            sg.personal_description, sh.course_name
+            sg.personal_description, sg.consent, sg.consent_date, sh.course_name
         FROM student s
         LEFT JOIN personal_information sa ON sa.student_id = s.id
         LEFT JOIN family_background sb ON sb.student_id = s.id

@@ -281,27 +281,27 @@
           </div>
 
           <div class="grid grid-cols-3 gap-4 mb-4">
-              <input type="text" name="father_name" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
+              <input type="text" name="father_name" class="p-2 border border-black rounded w-full" required oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
               <label class="text-[9px] lg:text-sm flex justify-center mt-2">NAME:</label>
-              <input type="text" name="mother_name" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
+              <input type="text" name="mother_name" class="p-2 border border-black rounded w-full" required oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
           </div>
 
           <div class="grid grid-cols-3 gap-4 mb-4">
-              <input type="number" name="father_age" class="p-2 border border-black rounded w-full">
+              <input type="number" name="father_age" class="p-2 border border-black rounded w-full" required>
               <label class="flex justify-center text-[9px] lg:text-sm mt-2">AGE:</label>
-              <input type="number" name="mother_age" class="p-2 border border-black rounded w-full">
+              <input type="number" name="mother_age" class="p-2 border border-black rounded w-full" required>
           </div>
 
           <div class="grid grid-cols-3 gap-4 mb-4">
-              <input type="text" name="father_education" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
+              <input type="text" name="father_education" class="p-2 border border-black rounded w-full" required oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
               <label class="flex justify-center text-[9px] lg:text-sm mt-2">HIGHEST EDUCATIONAL ATTAINMENT:</label>
-              <input type="text" name="mother_education" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
+              <input type="text" name="mother_education" class="p-2 border border-black rounded w-full" required oninput="this.value = this.value.toUpperCase().replace(/[^\p{L}\p{M}\s.,'!?@#&()\-_:;]/gu, '')">
           </div>
 
           <div class="grid grid-cols-3 gap-4 mb-4">
-              <input type="text" name="father_occupation" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.toUpperCase()">
+              <input type="text" name="father_occupation" class="p-2 border border-black rounded w-full" required oninput="this.value = this.value.toUpperCase()">
               <label class="flex justify-center text-[9px] lg:text-sm mt-2">OCCUPATION:</label>
-              <input type="text" name="mother_occupation" class="p-2 border border-black rounded w-full" oninput="this.value = this.value.toUpperCase()">
+              <input type="text" name="mother_occupation" class="p-2 border border-black rounded w-full" required oninput="this.value = this.value.toUpperCase()">
           </div>
 
           <div class="grid grid-cols-3 gap-4 mb-4">
@@ -315,6 +315,8 @@
                       name="father_income"
                       min="0"
                       step="1"
+                      placeholder="0"
+                      required
                       class="p-2 border border-black rounded-r w-full"
                   >
               </div>
@@ -333,6 +335,7 @@
                       name="mother_income"
                       min="0"
                       step="1"
+                      required
                       class="p-2 border border-black rounded-r w-full"
                   >
               </div>
@@ -345,6 +348,7 @@
                   name="father_contact"
                   maxlength="11"
                   placeholder="09XXXXXXXXX"
+                  required
                   class="p-2 border border-black rounded w-full"
                   oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
@@ -359,6 +363,7 @@
                   name="mother_contact"
                   maxlength="11"
                   placeholder="09XXXXXXXXX"
+                  required
                   class="p-2 border border-black rounded w-full"
                   oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
