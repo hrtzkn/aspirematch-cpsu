@@ -84,7 +84,7 @@
                     <td class="text-start w-[18%]">
                         {% if info.photo %}
                             <div class="border border-black p-1 text-center print:hidden">
-            <img src="{{ url_for('static', filename='uploads/students/' ~ student_results.photo) }}"
+            <img src="{{ url_for('static', filename='uploads/students/' ~ info.photo) }}"
                  class="w-[110px] h-[110px] object-cover mx-auto">
                             </div>
                         {% else %}
@@ -122,7 +122,7 @@
             <div class="p-2 lg:p-4 mb-6">
                 <div class="grid grid-cols-1 border border-black border-b-0">
                     <div class="p-1 lg:p-2 text-[8px] lg:text-xs font-bold">
-                        COURSE: <span class="font-normal">   </span>
+                        COURSE: <span class="font-normal">{{ info.course_name }}</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 border border-black border-b-0">
@@ -239,17 +239,17 @@
                 
                 <div class="bg-black text-[8px] lg:text-sm text-white font-bold px-2 py-1">Status of Parents</div>
                 <div class="grid grid-cols-5 text-[7px] lg:text-sm border border-black border-t-0">
-                    <div class="p-1 lg:p-2 border-r border-black">{% if info.married_living_together %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Married & <br> Living Together</div>
-                    <div class="p-1 lg:p-2 border-r border-black">{% if info.legally_separated %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Legally <br> Separated</div>
-                    <div class="p-1 lg:p-2 border-r border-black">{% if info.living_not_married %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Living in <br> (Not Married)</div>
-                    <div class="p-1 lg:p-2 border-r border-black">{% if info.mother_widow %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Mother (Widow)</div>
-                    <div class="p-1 lg:p-2">{% if info.father_widower %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Father (Widower)</div>
+                    <div class="p-1 lg:p-2 border-r border-black">{% if info.parent_status == "married_living_together" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Married & <br> Living Together</div>
+                    <div class="p-1 lg:p-2 border-r border-black">{% if info.parent_status == "legally_separated" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Legally <br> Separated</div>
+                    <div class="p-1 lg:p-2 border-r border-black">{% if info.parent_status == "living_not_married" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Living in <br> (Not Married)</div>
+                    <div class="p-1 lg:p-2 border-r border-black">{% if info.parent_status == "mother_widow" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Mother (Widow)</div>
+                    <div class="p-1 lg:p-2">{% if info.parent_status == "father_widower" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Father (Widower)</div>
                 </div>
 
                 <div class="grid grid-cols-3 text-[7px] lg:text-sm border border-black border-t-0">
-                    <div class="p-1 lg:p-2 border-r border-black">{% if info.separated %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Separated</div>
-                    <div class="p-1 lg:p-2 border-r border-black">{% if info.father_another_family %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Father is with another family</div>
-                    <div class="p-1 lg:p-2">{% if info.mother_another_family %}[ ✓ ]{% else %}&nbsp;&nbsp;[  ]{% endif %} Mother is with another family</div>
+                    <div class="p-1 lg:p-2 border-r border-black">{% if info.parent_status == "separated" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Separated</div>
+                    <div class="p-1 lg:p-2 border-r border-black">{% if info.father_another_family %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Father is with another family</div>
+                    <div class="p-1 lg:p-2">{% if info.mother_another_family %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Mother is with another family</div>
                 </div>
     {% endif %}
             </div>
@@ -388,7 +388,7 @@
                         <div class="pl-1 lg:pl-2 font-bold border-r border-black">{% if 'NORSU' in other_schools_selected %}☑{% else %}☐{% endif %} NORSU</div>
                         <div class="pl-1 lg:pl-2 font-bold border-r border-black">{% if 'TUP-V' in other_schools_selected %}☑{% else %}☐{% endif %} TUP-V</div>
                         <div class="pl-1 lg:pl-2 font-bold border-r border-black">{% if 'CSR' in other_schools_selected %}☑{% else %}☐{% endif %} CSR</div>
-                        <div class="pl-1 lg:pl-2 font-bold ">{% if other_school_text %}☑{% else %}☐{% endif %} Others, please specify: <span class="font-normal"></span>{{ other_school_text }}</div>
+                        <div class="pl-1 lg:pl-2 font-bold ">{% if other_school %}☑{% else %}☐{% endif %} Others, please specify: <span class="font-normal"></span>{{ other_school }}</div>
                     </div>
 
                 <div class="bg-black text-white text-[8px] lg:text-sm font-bold px-2 py-1">BEHAVIOR INFORMATION:</div>

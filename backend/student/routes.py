@@ -17,7 +17,7 @@ from calendar import monthrange
 import datetime
 import random
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 student_bp = Blueprint('student', __name__, template_folder='../../frontend/templates/student')
 
@@ -286,6 +286,9 @@ def get_letter_description(letter):
     description = letter_descriptions.get(letter, "No description available.")
     return jsonify({ "description": description })
 
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_MINUTES = 3
+
 @student_bp.route("/")
 def login_page():
     return render_template("student/studentLogin.html")
@@ -297,54 +300,116 @@ def studentlogin():
     email_error = False
 
     if request.method == "POST":
-        exam_id = request.form["exam_id"]
-        email = request.form["email"]
+        exam_id = request.form["exam_id"].strip()
+        email = request.form["email"].strip()
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Check student by exam_id
+        # 🔎 Find student by exam_id OR email
         cur.execute(
-            "SELECT id, email FROM student WHERE exam_id = %s",
-            (exam_id,)
+            """
+            SELECT id, exam_id, email, login_attempts, lockout_until
+            FROM student
+            WHERE exam_id = %s OR email = %s
+            """,
+            (exam_id, email)
         )
+
         student = cur.fetchone()
 
         if not student:
+            error = "Invalid Examination ID or Email"
             exam_error = True
-            error = "Invalid Examination ID"
+            email_error = True
 
         else:
-            student_id, stored_email = student
+            student_id, stored_exam, stored_email, attempts, lockout_until = student
+            now = datetime.now(timezone.utc)
 
-            # Optional: validate email if you want
-            if stored_email and stored_email != email:
-                email_error = True
-                error = "Email does not match our records"
+            # 🔒 Check lock
+            if lockout_until and now < lockout_until:
+                remaining = int((lockout_until - now).total_seconds() / 60)
+                error = f"Too many failed attempts. Try again in {remaining} minutes."
+
             else:
-                # Login student
-                session["student_id"] = student_id
-                session["exam_id"] = exam_id
-                session["last_activity"] = datetime.now(timezone.utc)
-                session.permanent = True
 
-                # Check if survey already answered
-                cur.execute(
-                    """
-                    SELECT 1 FROM student_survey_answer
-                    WHERE exam_id = %s AND student_id = %s
-                    """,
-                    (exam_id, student_id)
-                )
-                survey_row = cur.fetchone()
+                # Reset expired lock
+                if lockout_until and now >= lockout_until:
+                    cur.execute(
+                        "UPDATE student SET login_attempts = 0, lockout_until = NULL WHERE id = %s",
+                        (student_id,)
+                    )
+                    conn.commit()
+                    attempts = 0
 
-                cur.close()
-                conn.close()
+                # ❌ If exam_id OR email does not match
+                if stored_exam != exam_id or stored_email != email:
 
-                if survey_row:
-                    return redirect(url_for("student.home"))
+                    attempts += 1
+
+                    if attempts >= MAX_LOGIN_ATTEMPTS:
+                        lock_time = now + timedelta(minutes=LOCKOUT_MINUTES)
+
+                        cur.execute(
+                            """
+                            UPDATE student
+                            SET login_attempts = %s,
+                                lockout_until = %s
+                            WHERE id = %s
+                            """,
+                            (attempts, lock_time, student_id)
+                        )
+
+                        error = f"Too many failed attempts. Account locked for {LOCKOUT_MINUTES} minutes."
+
+                    else:
+                        cur.execute(
+                            "UPDATE student SET login_attempts = %s WHERE id = %s",
+                            (attempts, student_id)
+                        )
+
+                        error = f"Invalid Examination ID or Email. Attempt {attempts}/{MAX_LOGIN_ATTEMPTS}"
+
+                    conn.commit()
+
+                    if stored_exam != exam_id:
+                        exam_error = True
+
+                    if stored_email != email:
+                        email_error = True
+
                 else:
-                    return redirect(url_for("student.survey"))
+                    # ✅ Successful login
+                    cur.execute(
+                        "UPDATE student SET login_attempts = 0, lockout_until = NULL WHERE id = %s",
+                        (student_id,)
+                    )
+                    conn.commit()
+
+                    session["student_id"] = student_id
+                    session["exam_id"] = stored_exam
+                    session["last_activity"] = datetime.now(timezone.utc)
+                    session.permanent = True
+
+                    # Check if survey already answered
+                    cur.execute(
+                        """
+                        SELECT 1 FROM student_survey_answer
+                        WHERE exam_id = %s AND student_id = %s
+                        """,
+                        (stored_exam, student_id)
+                    )
+
+                    survey_row = cur.fetchone()
+
+                    cur.close()
+                    conn.close()
+
+                    if survey_row:
+                        return redirect(url_for("student.home"))
+                    else:
+                        return redirect(url_for("student.survey"))
 
         cur.close()
         conn.close()
@@ -1772,28 +1837,25 @@ def studentInventoryForm():
         emergency_address = request.form.get("emergency_address")
         emergency_contact = request.form.get("emergency_contact")
 
-        father_name = request.form.get("father_name")
-        father_age = request.form.get("father_age")
-        father_education = request.form.get("father_education")
-        father_occupation = request.form.get("father_occupation")
-        father_income = request.form.get("father_income")
-        father_contact = request.form.get("father_contact")
+        father_name = request.form.get("father_name") or None
+        father_age = request.form.get("father_age") or None
+        father_education = request.form.get("father_education") or None
+        father_occupation = request.form.get("father_occupation") or None
+        father_income = request.form.get("father_income") or None
+        father_contact = request.form.get("father_contact") or None
 
-        mother_name = request.form.get("mother_name")
-        mother_age = request.form.get("mother_age")
-        mother_education = request.form.get("mother_education")
-        mother_occupation = request.form.get("mother_occupation")
-        mother_income = request.form.get("mother_income")
-        mother_contact = request.form.get("mother_contact")
+        mother_name = request.form.get("mother_name") or None
+        mother_age = request.form.get("mother_age") or None
+        mother_education = request.form.get("mother_education") or None
+        mother_occupation = request.form.get("mother_occupation") or None
+        mother_income = request.form.get("mother_income") or None
+        mother_contact = request.form.get("mother_contact") or None
 
-        married_living_together = bool(request.form.get("married_living_together"))
-        living_not_married = bool(request.form.get("living_not_married"))
-        legally_separated = bool(request.form.get("legally_separated"))
-        mother_widow = bool(request.form.get("mother_widow"))
-        father_widower = bool(request.form.get("father_widower"))
-        separated = bool(request.form.get("separated"))
-        father_another_family = bool(request.form.get("father_another_family"))
-        mother_another_family = bool(request.form.get("mother_another_family"))
+        parent_status = request.form.get("parent_status")  # radio button
+
+        another_family_list = request.form.getlist("another_family")
+        father_another_family = "father" in another_family_list
+        mother_another_family = "mother" in another_family_list
 
         elementary_school_name = request.form.get("elementary_school_name")
         elementary_year_graduated = request.form.get("elementary_year_graduated")
@@ -1813,263 +1875,110 @@ def studentInventoryForm():
         org_membership = request.form.get("org_membership")
         study_finance = request.form.get("study_finance")
         course_personal_choice = request.form.get("course_personal_choice")
+
         influenced_by = request.form.get("influenced_by")
         feeling_about_course = request.form.get("feeling_about_course")
         personal_choice = request.form.get("personal_choice")
 
-        if not subject_interested or not course_personal_choice:
-            error_message = "Please complete all required fields before proceeding."
-            raise ValueError(error_message)
+        # Validate Step 5
+        if not subject_interested or not org_membership or not study_finance or not course_personal_choice:
+            flash("Please complete all required fields before proceeding.", "error")
+            return redirect(url_for("student.studentInventoryForm"))
 
+        # If YES → clear Step 6 fields
         if course_personal_choice == "yes":
             influenced_by = None
             feeling_about_course = None
             personal_choice = None
 
-        enroll_reasons = request.form.getlist("enroll_reasons")
-        other_reason = request.form.get("other_reason")
+        # If NO → Step 6 required
+        if course_personal_choice == "no":
+            if not influenced_by or not feeling_about_course or not personal_choice:
+                flash("Please complete the additional course questions.", "error")
+                return redirect(url_for("student.studentInventoryForm"))
+
+        enroll_reasons = request.form.getlist("enroll_reasons[]")
+        other_reason = request.form.get("other_reason") or ""
+
+        if not enroll_reasons and not other_reason.strip():
+            flash("Please select at least one reason or specify in Others.", "error")
+            return redirect(url_for("student.studentInventoryForm"))
 
         reasons_str = ", ".join(enroll_reasons) if enroll_reasons else None
 
-        other_schools = request.form.getlist("other_school")
-        other_school_text = request.form.get("other_school_other")
+        other_schools = request.form.getlist("other_school[]")
+        other_school_text = (request.form.get("other_school_other") or "").strip()
 
-        other_schools_str = ", ".join(other_schools) if other_schools else None
-
-        if not other_schools_str and not other_school_text:
+        if not other_schools and not other_school_text:
             flash("Please select at least one school or specify in 'Others'.", "error")
             return redirect(url_for("student.studentInventoryForm"))
 
-        bullying = bool(request.form.get("bullying"))
-        bullying_when = request.form.get("bullying_when")
-        if bullying:
-            bullying_bother = request.form.get("bullying_bother")
-        else:
-            bullying_bother = None
+        other_schools_str = ", ".join(other_schools) if other_schools else None
 
-        suicidal_thoughts = bool(request.form.get("suicidal_thoughts"))
-        suicidal_thoughts_when = request.form.get("suicidal_thoughts_when")
-        if suicidal_thoughts:
-            suicidal_thoughts_bother = request.form.get("suicidal_thoughts_bother")
-        else:
-            suicidal_thoughts_bother = None
+        def get_behavior(field):
+            checked = request.form.get(field)
+            when = request.form.get(f"{field}_when") or None
+            bother = request.form.get(f"{field}_bother")
 
-        suicidal_attempts = bool(request.form.get("suicidal_attempts"))
-        suicidal_attempts_when = request.form.get("suicidal_attempts_when")
-        if suicidal_attempts:
-            suicidal_attempts_bother = request.form.get("suicidal_attempts_bother")
-        else:
-            suicidal_attempts_bother = None
-
-        panic_attacks = bool(request.form.get("panic_attacks"))
-        panic_attacks_when = request.form.get("panic_attacks_when")
-        if panic_attacks:
-            panic_attacks_bother = request.form.get("panic_attacks_bother")
-        else:
-            panic_attacks_bother = None
-
-        anxiety = bool(request.form.get("anxiety"))
-        anxiety_when = request.form.get("anxiety_when")
-        if anxiety:
-            anxiety_bother = request.form.get("anxiety_bother")
-        else:
-            anxiety_bother = None
-
-        depression = bool(request.form.get("depression"))
-        depression_when = request.form.get("depression_when")
-        if depression:
-            depression_bother = request.form.get("depression_bother")
-        else:
-            depression_bother = None
-
-        self_anger_issues = bool(request.form.get("self_anger_issues"))
-        self_anger_issues_when = request.form.get("self_anger_issues_when")
-        if self_anger_issues:
-            self_anger_issues_bother = request.form.get("self_anger_issues_bother")
-        else:
-            self_anger_issues_bother = None
-
-        recurring_negative_thoughts = bool(request.form.get("recurring_negative_thoughts"))
-        recurring_negative_thoughts_when = request.form.get("recurring_negative_thoughts_when")
-        if recurring_negative_thoughts:
-            recurring_negative_thoughts_bother = request.form.get("recurring_negative_thoughts_bother")
-        else:
-            recurring_negative_thoughts_bother = None
-
-        low_self_esteem = bool(request.form.get("low_self_esteem"))
-        low_self_esteem_when = request.form.get("low_self_esteem_when")
-        if low_self_esteem:
-            low_self_esteem_bother = request.form.get("low_self_esteem_bother")
-        else:
-            low_self_esteem_bother = None
-
-        poor_study_habits = bool(request.form.get("poor_study_habits"))
-        poor_study_habits_when = request.form.get("poor_study_habits_when")
-        if poor_study_habits:
-            poor_study_habits_bother = request.form.get("poor_study_habits_bother")
-        else:
-            poor_study_habits_bother = None
-
-        poor_in_decision_making = bool(request.form.get("poor_in_decision_making"))
-        poor_in_decision_making_when = request.form.get("poor_in_decision_making_when")
-        if poor_in_decision_making:
-            poor_in_decision_making_bother = request.form.get("poor_in_decision_making_bother")
-        else:
-            poor_in_decision_making_bother = None
-
-        impulsivity = bool(request.form.get("impulsivity"))
-        impulsivity_when = request.form.get("impulsivity_when")
-        if impulsivity:
-            impulsivity_bother = request.form.get("impulsivity_bother")
-        else:
-            impulsivity_bother = None
-
-        poor_sleeping_habits = bool(request.form.get("poor_sleeping_habits"))
-        poor_sleeping_habits_when = request.form.get("poor_sleeping_habits_when")
-        if poor_sleeping_habits:
-            poor_sleeping_habits_bother = request.form.get("poor_sleeping_habits_bother")
-        else:
-            poor_sleeping_habits_bother = None
-
-        loos_of_appetite = bool(request.form.get("loos_of_appetite"))
-        loos_of_appetite_when = request.form.get("loos_of_appetite_when")
-        if loos_of_appetite:
-            loos_of_appetite_bother = request.form.get("loos_of_appetite_bother")
-        else:
-            loos_of_appetite_bother = None
-
-        over_eating = bool(request.form.get("over_eating"))
-        over_eating_when = request.form.get("over_eating_when")
-        if over_eating:
-            over_eating_bother = request.form.get("over_eating_bother")
-        else:
-            over_eating_bother = None
-
-        poor_hygiene = bool(request.form.get("poor_hygiene"))
-        poor_hygiene_when = request.form.get("poor_hygiene_when")
-        if poor_hygiene:
-            poor_hygiene_bother = request.form.get("poor_hygiene_bother")
-        else:
-            poor_hygiene_bother = None
-
-        withdrawal_isolation = bool(request.form.get("withdrawal_isolation"))
-        withdrawal_isolation_when = request.form.get("withdrawal_isolation_when")
-        if withdrawal_isolation:
-            withdrawal_isolation_bother = request.form.get("withdrawal_isolation_bother")
-        else:
-            withdrawal_isolation_bother = None
-
-        family_problem = bool(request.form.get("family_problem"))
-        family_problem_when = request.form.get("family_problem_when")
-        if family_problem:
-            family_problem_bother = request.form.get("family_problem_bother")
-        else:
-            family_problem_bother = None
-
-        other_relationship_problem = bool(request.form.get("other_relationship_problem"))
-        other_relationship_problem_when = request.form.get("other_relationship_problem_when")
-        if other_relationship_problem:
-            other_relationship_problem_bother = request.form.get("other_relationship_problem_bother")
-        else:
-            other_relationship_problem_bother = None
-
-        alcohol_addiction = bool(request.form.get("alcohol_addiction"))
-        alcohol_addiction_when = request.form.get("alcohol_addiction_when")
-        if alcohol_addiction:
-            alcohol_addiction_bother = request.form.get("alcohol_addiction_bother")
-        else:
-            alcohol_addiction_bother = None
-
-        gambling_addiction = bool(request.form.get("gambling_addiction"))
-        gambling_addiction_when = request.form.get("gambling_addiction_when")
-        if gambling_addiction:
-            gambling_addiction_bother = request.form.get("gambling_addiction_bother")
-        else:
-            gambling_addiction_bother = None
-
-        drug_addiction = bool(request.form.get("drug_addiction"))
-        drug_addiction_when = request.form.get("drug_addiction_when")
-        if drug_addiction:
-            drug_addiction_bother = request.form.get("drug_addiction_bother")
-        else:
-            drug_addiction_bother = None
-
-        computer_addiction = bool(request.form.get("computer_addiction"))
-        computer_addiction_when = request.form.get("computer_addiction_when")
-        if computer_addiction:
-            computer_addiction_bother = request.form.get("computer_addiction_bother")
-        else:
-            computer_addiction_bother = None
-
-        sexual_harassment = bool(request.form.get("sexual_harassment"))
-        sexual_harassment_when = request.form.get("sexual_harassment_when")
-        if sexual_harassment:
-            sexual_harassment_bother = request.form.get("sexual_harassment_bother")
-        else:
-            sexual_harassment_bother = None
-
-        sexual_abuse = bool(request.form.get("sexual_abuse"))
-        sexual_abuse_when = request.form.get("sexual_abuse_when")
-        if sexual_abuse:
-            sexual_abuse_bother = request.form.get("sexual_abuse_bother")
-        else:
-            sexual_abuse_bother = None
-
-        physical_abuse = bool(request.form.get("physical_abuse"))
-        physical_abuse_when = request.form.get("physical_abuse_when")
-        if physical_abuse:
-            physical_abuse_bother = request.form.get("physical_abuse_bother")
-        else:
-            physical_abuse_bother = None
-
-        verbal_abuse = bool(request.form.get("verbal_abuse"))
-        verbal_abuse_when = request.form.get("verbal_abuse_when")
-        if verbal_abuse:
-            verbal_abuse_bother = request.form.get("verbal_abuse_bother")
-        else:
-            verbal_abuse_bother = None
-
-        pre_marital_sex = bool(request.form.get("pre_marital_sex"))
-        pre_marital_sex_when = request.form.get("pre_marital_sex_when")
-        if pre_marital_sex:
-            pre_marital_sex_bother = request.form.get("pre_marital_sex_bother")
-        else:
-            pre_marital_sex_bother = None
-
-        teenage_pregnancy = bool(request.form.get("teenage_pregnancy"))
-        teenage_pregnancy_when = request.form.get("teenage_pregnancy_when")
-        if teenage_pregnancy:
-            teenage_pregnancy_bother = request.form.get("teenage_pregnancy_bother")
-        else:
-            teenage_pregnancy_bother = None
-
-        abortion = bool(request.form.get("abortion"))
-        abortion_when = request.form.get("abortion_when")
-        if abortion:
-            abortion_bother = request.form.get("abortion_bother")
-        else:
-            abortion_bother = None
-
-        extra_marital_affairs = bool(request.form.get("extra_marital_affairs"))
-        extra_marital_affairs_when = request.form.get("extra_marital_affairs_when")
-        if extra_marital_affairs:
-            extra_marital_affairs_bother = request.form.get("extra_marital_affairs_bother")
-        else:
-            extra_marital_affairs_bother = None
+            if checked == "yes":
+                return True, when, True if bother == "yes" else False
+            else:
+                return False, None, None
+            
+        bullying, bullying_when, bullying_bother = get_behavior("bullying")
+        suicidal_thoughts, suicidal_thoughts_when, suicidal_thoughts_bother = get_behavior("suicidal_thoughts")
+        suicidal_attempts, suicidal_attempts_when, suicidal_attempts_bother = get_behavior("suicidal_attempts")
+        panic_attacks, panic_attacks_when, panic_attacks_bother = get_behavior("panic_attacks")
+        anxiety, anxiety_when, anxiety_bother = get_behavior("anxiety")
+        depression, depression_when, depression_bother = get_behavior("depression")
+        self_anger_issues, self_anger_issues_when, self_anger_issues_bother = get_behavior("self_anger_issues")
+        recurring_negative_thoughts, recurring_negative_thoughts_when, recurring_negative_thoughts_bother = get_behavior("recurring_negative_thoughts")
+        low_self_esteem, low_self_esteem_when, low_self_esteem_bother = get_behavior("low_self_esteem")
+        poor_study_habits, poor_study_habits_when, poor_study_habits_bother = get_behavior("poor_study_habits")
+        poor_in_decision_making, poor_in_decision_making_when, poor_in_decision_making_bother = get_behavior("poor_in_decision_making")
+        impulsivity, impulsivity_when, impulsivity_bother = get_behavior("impulsivity")
+        poor_sleeping_habits, poor_sleeping_habits_when, poor_sleeping_habits_bother = get_behavior("poor_sleeping_habits")
+        loss_of_appetite, loss_of_appetite_when, loss_of_appetite_bother = get_behavior("loss_of_appetite")
+        over_eating, over_eating_when, over_eating_bother = get_behavior("over_eating")
+        poor_hygiene, poor_hygiene_when, poor_hygiene_bother = get_behavior("poor_hygiene")
+        withdrawal_isolation, withdrawal_isolation_when, withdrawal_isolation_bother = get_behavior("withdrawal_isolation")
+        family_problem, family_problem_when, family_problem_bother = get_behavior("family_problem")
+        other_relationship_problem, other_relationship_problem_when, other_relationship_problem_bother = get_behavior("other_relationship_problem")
+        alcohol_addiction, alcohol_addiction_when, alcohol_addiction_bother = get_behavior("alcohol_addiction")
+        gambling_addiction, gambling_addiction_when, gambling_addiction_bother = get_behavior("gambling_addiction")
+        drug_addiction, drug_addiction_when, drug_addiction_bother = get_behavior("drug_addiction")
+        computer_addiction, computer_addiction_when, computer_addiction_bother = get_behavior("computer_addiction")
+        sexual_harassment, sexual_harassment_when, sexual_harassment_bother = get_behavior("sexual_harassment")
+        sexual_abuse, sexual_abuse_when, sexual_abuse_bother = get_behavior("sexual_abuse")
+        physical_abuse, physical_abuse_when, physical_abuse_bother = get_behavior("physical_abuse")
+        verbal_abuse, verbal_abuse_when, verbal_abuse_bother = get_behavior("verbal_abuse")
+        pre_marital_sex, pre_marital_sex_when, pre_marital_sex_bother = get_behavior("pre_marital_sex")
+        teenage_pregnancy, teenage_pregnancy_when, teenage_pregnancy_bother = get_behavior("teenage_pregnancy")
+        abortion, abortion_when, abortion_bother = get_behavior("abortion")
+        extra_marital_affairs, extra_marital_affairs_when, extra_marital_affairs_bother = get_behavior("extra_marital_affairs")
 
         psychiatrist_before = request.form.get("psychiatrist_before")
-        psychiatrist_reason = request.form.get("psychiatrist_reason")
-        psychiatrist_when = request.form.get("psychiatrist_when")
+        psychiatrist_reason = request.form.get("psychiatrist_reason") if psychiatrist_before == "yes" else None
+        psychiatrist_when = request.form.get("psychiatrist_when") if psychiatrist_before == "yes" else None
 
         psychologist_before = request.form.get("psychologist_before")
-        psychologist_reason = request.form.get("psychologist_reason")
-        psychologist_when = request.form.get("psychologist_when")
+        psychologist_reason = request.form.get("psychologist_reason") if psychologist_before == "yes" else None
+        psychologist_when = request.form.get("psychologist_when") if psychologist_before == "yes" else None
 
         counselor_before = request.form.get("counselor_before")
-        counselor_reason = request.form.get("counselor_reason")
-        counselor_when = request.form.get("counselor_when")
+        counselor_reason = request.form.get("counselor_reason") if counselor_before == "yes" else None
+        counselor_when = request.form.get("counselor_when") if counselor_before == "yes" else None
 
         personal_description = request.form.get("personal_description")
+
+        if not personal_description or personal_description.strip() == "":
+            error = "Please enter something about yourself."
+            return render_template("student/studentInventoryForm.html", error=error)
+
+        consent = request.form.get("consent")
+        if not consent:
+            return "Consent is required", 400
+        consent_value = True if consent == "on" else False
 
         cur.execute("""
             INSERT INTO personal_information (
@@ -2101,12 +2010,13 @@ def studentInventoryForm():
 
         cur.execute("""
             INSERT INTO status_of_parent (
-                student_id, married_living_together, living_not_married, legally_separated,
-                mother_widow, father_widower, separated, father_another_family, mother_another_family
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                student_id, parent_status, father_another_family, mother_another_family
+            ) VALUES (%s, %s, %s, %s)
         """, (
-            student_id, married_living_together, living_not_married, legally_separated,
-            mother_widow, father_widower, separated, father_another_family, mother_another_family
+            student_id,
+            parent_status if parent_status else None,
+            father_another_family,
+            mother_another_family
         ))
 
         cur.execute("""
@@ -2151,7 +2061,7 @@ def studentInventoryForm():
                 poor_in_decision_making, poor_in_decision_making_when, poor_in_decision_making_bother,
                 impulsivity, impulsivity_when, impulsivity_bother,
                 poor_sleeping_habits, poor_sleeping_habits_when, poor_sleeping_habits_bother,
-                loos_of_appetite, loos_of_appetite_when, loos_of_appetite_bother,
+                loss_of_appetite, loss_of_appetite_when, loss_of_appetite_bother,
                 over_eating, over_eating_when, over_eating_bother,
                 poor_hygiene, poor_hygiene_when, poor_hygiene_bother,
                 withdrawal_isolation, withdrawal_isolation_when, withdrawal_isolation_bother,
@@ -2187,7 +2097,7 @@ def studentInventoryForm():
             poor_in_decision_making, poor_in_decision_making_when, poor_in_decision_making_bother,
             impulsivity, impulsivity_when, impulsivity_bother,
             poor_sleeping_habits, poor_sleeping_habits_when, poor_sleeping_habits_bother,
-            loos_of_appetite, loos_of_appetite_when, loos_of_appetite_bother,
+            loss_of_appetite, loss_of_appetite_when, loss_of_appetite_bother,
             over_eating, over_eating_when, over_eating_bother,
             poor_hygiene, poor_hygiene_when, poor_hygiene_bother,
             withdrawal_isolation, withdrawal_isolation_when, withdrawal_isolation_bother,
@@ -2224,11 +2134,11 @@ def studentInventoryForm():
 
         cur.execute("""
             INSERT INTO personal_descriptions (
-                student_id,personal_description
+                student_id,personal_description, consent, consent_date
             )
-            VALUES (%s,%s)
+            VALUES (%s,%s,%s, NOW())
         """, (
-            student_id,personal_description
+            student_id,personal_description, consent_value
         ))
 
         cur.execute("""
@@ -2243,8 +2153,9 @@ def studentInventoryForm():
         flash("Inventory form submitted successfully!", "success")
         return redirect(url_for("student.home"))
 
-    cur.execute("SELECT fullname, gender, email FROM student WHERE id = %s", (student_id,))
+    cur.execute("SELECT id, fullname, gender, email FROM student WHERE id = %s", (student_id,))
     student = cur.fetchone()
+    print(request.form)
     cur.close()
     conn.close()
 
@@ -2290,8 +2201,7 @@ def studentInventoryResult():
             sb.father_name, sb.father_age, sb.father_education, sb.father_occupation,
             sb.father_income, sb.father_contact, sb.mother_name, sb.mother_age, sb.mother_education,
             sb.mother_occupation, sb.mother_income, sb.mother_contact, 
-            sc.married_living_together, sc.living_not_married, sc.legally_separated,
-            sc.mother_widow, sc.father_widower, sc.separated, sc.father_another_family, sc.mother_another_family,
+            sc.parent_status, sc.father_another_family, sc.mother_another_family,
             sd.elementary_school_name, sd.elementary_year_graduated, sd.elementary_awards,
             sd.junior_high_school_name, sd.junior_high_year_graduated, sd.junior_high_awards,
             sd.senior_high_school_name, sd.senior_high_year_graduated, sd.senior_high_awards,
@@ -2310,7 +2220,7 @@ def studentInventoryResult():
             se.poor_in_decision_making, se.poor_in_decision_making_when, se.poor_in_decision_making_bother,
             se.impulsivity, se.impulsivity_when, se.impulsivity_bother,
             se.poor_sleeping_habits, se.poor_sleeping_habits_when, se.poor_sleeping_habits_bother,
-            se.loos_of_appetite, se.loos_of_appetite_when, se.loos_of_appetite_bother,
+            se.loss_of_appetite, se.loss_of_appetite_when, se.loss_of_appetite_bother,
             se.over_eating, se.over_eating_when, se.over_eating_bother,
             se.poor_hygiene, se.poor_hygiene_when, se.poor_hygiene_bother,
             se.withdrawal_isolation, se.withdrawal_isolation_when, se.withdrawal_isolation_bother,
@@ -2331,7 +2241,7 @@ def studentInventoryResult():
             sf.psychiatrist_before, sf.psychiatrist_reason, sf.psychiatrist_when,
             sf.psychologist_before, sf.psychologist_reason, sf.psychologist_when,
             sf.counselor_before, sf.counselor_reason, sf.counselor_when,
-            sg.personal_description
+            sg.personal_description, sh.course_name
         FROM student s
         LEFT JOIN personal_information sa ON sa.student_id = s.id
         LEFT JOIN family_background sb ON sb.student_id = s.id
@@ -2340,6 +2250,7 @@ def studentInventoryResult():
         LEFT JOIN behavior_information se ON se.student_id = s.id
         LEFT JOIN psychological_consultations sf ON sf.student_id = s.id
         LEFT JOIN personal_descriptions sg ON sg.student_id = s.id
+        LEFT JOIN course sh ON sh.student_id = s.id
         WHERE s.id = %s
     """, (student_id,))
 

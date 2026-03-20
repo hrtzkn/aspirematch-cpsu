@@ -13,7 +13,7 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "static")
 )
 app.secret_key = os.getenv("SECRET_KEY")
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=4)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=10)
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 if not os.path.exists(UPLOAD_FOLDER):
@@ -25,7 +25,7 @@ def check_session_timeout():
 
     now = datetime.now(timezone.utc)
     timeout = app.permanent_session_lifetime.total_seconds()
-
+    
     if request.blueprint == "admin":
 
         if request.endpoint == "admin.login":
