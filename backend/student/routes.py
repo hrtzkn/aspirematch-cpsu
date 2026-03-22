@@ -1809,7 +1809,38 @@ def studentInventoryForm():
 
     student_id = session["student_id"]
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    cur.execute("""
+        SELECT *
+        FROM student s
+        LEFT JOIN personal_information sa ON sa.student_id = s.id
+        LEFT JOIN family_background sb ON sb.student_id = s.id
+        LEFT JOIN status_of_parent sc ON sc.student_id = s.id
+        LEFT JOIN academic_information sd ON sd.student_id = s.id
+        LEFT JOIN behavior_information se ON se.student_id = s.id
+        LEFT JOIN psychological_consultations sf ON sf.student_id = s.id
+        LEFT JOIN personal_descriptions sg ON sg.student_id = s.id
+        LEFT JOIN course sh ON sh.student_id = s.id
+        LEFT JOIN cpsu_enrollment_reason si ON si.student_id = s.id
+        LEFT JOIN other_schools_considered sj ON sj.student_id = s.id
+        WHERE s.id = %s
+    """, (student_id,))
+    info = cur.fetchone()
+
+    selected_reasons = []
+
+    if info and info["reasons"]:
+        selected_reasons = [r.strip() for r in info["reasons"].split(",")]
+
+    other_schools_selected = []
+
+    if info and info["school_choices"]:
+        other_schools_selected = [s.strip() for s in info["school_choices"].split(",")]
+
+    cur.execute("SELECT 1 FROM personal_information WHERE student_id = %s", (student_id,))
+    existing_inventory = cur.fetchone()
+    is_update = True if existing_inventory else False
 
     if request.method == "POST":
         
@@ -1980,74 +2011,305 @@ def studentInventoryForm():
             return "Consent is required", 400
         consent_value = True if consent == "on" else False
 
-        cur.execute("""
-            INSERT INTO personal_information (
+        if is_update:
+            cur.execute("""
+                UPDATE personal_information SET
+                    nickname=%s,
+                    present_address=%s,
+                    provincial_address=%s,
+                    date_of_birth=%s,
+                    place_of_birth=%s,
+                    age=%s,
+                    birth_order=%s,
+                    siblings_count=%s,
+                    civil_status=%s,
+                    religion=%s,
+                    nationality=%s,
+                    home_phone=%s,
+                    mobile_no=%s,
+                    email=%s,
+                    weight=%s,
+                    height=%s,
+                    blood_type=%s,
+                    hobbies=%s,
+                    talents=%s,
+                    emergency_name=%s,
+                    emergency_relationship=%s,
+                    emergency_address=%s,
+                    emergency_contact=%s
+                WHERE student_id=%s
+            """, (
+                nickname, present_address, provincial_address,
+                date_of_birth, place_of_birth, age, birth_order, siblings_count,
+                civil_status, religion, nationality, home_phone, mobile_no, email,
+                weight, height, blood_type, hobbies, talents,
+                emergency_name, emergency_relationship, emergency_address, emergency_contact,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO personal_information (
+                    student_id, nickname, present_address, provincial_address,
+                    date_of_birth, place_of_birth, age, birth_order, siblings_count,
+                    civil_status, religion, nationality, home_phone, mobile_no, email,
+                    weight, height, blood_type, hobbies, talents,
+                    emergency_name, emergency_relationship, emergency_address, emergency_contact
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
                 student_id, nickname, present_address, provincial_address,
                 date_of_birth, place_of_birth, age, birth_order, siblings_count,
                 civil_status, religion, nationality, home_phone, mobile_no, email,
                 weight, height, blood_type, hobbies, talents,
                 emergency_name, emergency_relationship, emergency_address, emergency_contact
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            student_id, nickname, present_address, provincial_address,
-            date_of_birth, place_of_birth, age, birth_order, siblings_count,
-            civil_status, religion, nationality, home_phone, mobile_no, email,
-            weight, height, blood_type, hobbies, talents,
-            emergency_name, emergency_relationship, emergency_address, emergency_contact
-        ))
+            ))
 
-        cur.execute("""
-            INSERT INTO family_background (
+        if is_update:
+            cur.execute("""
+                UPDATE family_background SET
+                    father_name=%s,
+                    father_age=%s,
+                    father_education=%s,
+                    father_occupation=%s,
+                    father_income=%s,
+                    father_contact=%s,
+                    mother_name=%s,
+                    mother_age=%s,
+                    mother_education=%s,
+                    mother_occupation=%s,
+                    mother_income=%s,
+                    mother_contact=%s
+                WHERE student_id=%s
+            """, (
+                father_name, father_age, father_education, father_occupation,
+                father_income, father_contact, mother_name, mother_age, mother_education,
+                mother_occupation, mother_income, mother_contact,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO family_background (
+                    student_id, father_name, father_age, father_education, father_occupation,
+                    father_income, father_contact, mother_name, mother_age, mother_education,
+                    mother_occupation, mother_income, mother_contact
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
                 student_id, father_name, father_age, father_education, father_occupation,
                 father_income, father_contact, mother_name, mother_age, mother_education,
                 mother_occupation, mother_income, mother_contact
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            student_id, father_name, father_age, father_education, father_occupation,
-            father_income, father_contact, mother_name, mother_age, mother_education,
-            mother_occupation, mother_income, mother_contact
-        ))
+            ))
 
-        cur.execute("""
-            INSERT INTO status_of_parent (
-                student_id, parent_status, father_another_family, mother_another_family
-            ) VALUES (%s, %s, %s, %s)
-        """, (
-            student_id,
-            parent_status if parent_status else None,
-            father_another_family,
-            mother_another_family
-        ))
+        if is_update:
+            cur.execute("""
+                UPDATE status_of_parent SET
+                    parent_status=%s,
+                    father_another_family=%s,
+                    mother_another_family=%s
+                WHERE student_id=%s
+            """, (
+                parent_status, father_another_family, mother_another_family,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO status_of_parent (
+                    student_id, parent_status, father_another_family, mother_another_family
+                ) VALUES (%s, %s, %s, %s)
+            """, (
+                student_id,
+                parent_status if parent_status else None,
+                father_another_family,
+                mother_another_family
+            ))
 
-        cur.execute("""
-            INSERT INTO academic_information (
+        if is_update:
+            cur.execute("""
+                UPDATE academic_information SET
+                    elementary_school_name=%s,
+                    elementary_year_graduated=%s,
+                    elementary_awards=%s,
+                    junior_high_school_name=%s,
+                    junior_high_year_graduated=%s,
+                    junior_high_awards=%s,
+                    senior_high_school_name=%s,
+                    senior_high_year_graduated=%s,
+                    senior_high_awards=%s,
+                    senior_high_track=%s,
+                    senior_high_strand=%s,
+                    subject_interested=%s,
+                    org_membership=%s,
+                    study_finance=%s,
+                    course_personal_choice=%s,
+                    influenced_by=%s,
+                    feeling_about_course=%s,
+                    personal_choice=%s
+                WHERE student_id=%s
+            """, (
+                elementary_school_name, elementary_year_graduated, elementary_awards,
+                junior_high_school_name, junior_high_year_graduated, junior_high_awards,
+                senior_high_school_name, senior_high_year_graduated, senior_high_awards,
+                senior_high_track, senior_high_strand, subject_interested, org_membership,
+                study_finance, True if course_personal_choice == "yes" else False, 
+                influenced_by, feeling_about_course, personal_choice,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO academic_information (
+                    student_id, elementary_school_name, elementary_year_graduated, elementary_awards,
+                    junior_high_school_name, junior_high_year_graduated, junior_high_awards,
+                    senior_high_school_name, senior_high_year_graduated, senior_high_awards,
+                    senior_high_track, senior_high_strand, subject_interested, org_membership,
+                    study_finance, course_personal_choice, influenced_by, feeling_about_course, personal_choice
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
                 student_id, elementary_school_name, elementary_year_graduated, elementary_awards,
                 junior_high_school_name, junior_high_year_graduated, junior_high_awards,
                 senior_high_school_name, senior_high_year_graduated, senior_high_awards,
                 senior_high_track, senior_high_strand, subject_interested, org_membership,
-                study_finance, course_personal_choice, influenced_by, feeling_about_course, personal_choice
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            student_id, elementary_school_name, elementary_year_graduated, elementary_awards,
-            junior_high_school_name, junior_high_year_graduated, junior_high_awards,
-            senior_high_school_name, senior_high_year_graduated, senior_high_awards,
-            senior_high_track, senior_high_strand, subject_interested, org_membership,
-            study_finance, True if course_personal_choice == "yes" else False, 
-            influenced_by, feeling_about_course, personal_choice
-        ))
+                study_finance, True if course_personal_choice == "yes" else False, 
+                influenced_by, feeling_about_course, personal_choice
+            ))
 
-        cur.execute("""
-            INSERT INTO cpsu_enrollment_reason (student_id, reasons, other_reason)
-            VALUES (%s, %s, %s)
-        """, (student_id, reasons_str, other_reason))
+        if is_update:
+            cur.execute("""
+                UPDATE cpsu_enrollment_reason SET
+                    reasons=%s,
+                    other_reason=%s
+                WHERE student_id=%s
+            """, (
+                reasons_str, other_reason,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO cpsu_enrollment_reason (student_id, reasons, other_reason)
+                VALUES (%s, %s, %s)
+            """, (student_id, reasons_str, other_reason))
 
-        cur.execute("""
-            INSERT INTO other_schools_considered (student_id, school_choices, other_school)
-            VALUES (%s, %s, %s)
-        """, (student_id, other_schools_str, other_school_text))
+        if is_update:
+            cur.execute("""
+                UPDATE other_schools_considered SET
+                    school_choices=%s,
+                    other_school=%s
+                WHERE student_id=%s
+            """, (
+                other_schools_str, other_school_text,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO other_schools_considered (student_id, school_choices, other_school)
+                VALUES (%s, %s, %s)
+            """, (student_id, other_schools_str, other_school_text))
 
-        cur.execute("""
-            INSERT INTO behavior_information (
+        if is_update:
+            cur.execute("""
+                UPDATE behavior_information SET
+                    bullying=%s, bullying_when=%s, bullying_bother=%s, 
+                    suicidal_thoughts=%s, suicidal_thoughts_when=%s, suicidal_thoughts_bother=%s,
+                    suicidal_attempts=%s, suicidal_attempts_when=%s, suicidal_attempts_bother=%s,
+                    panic_attacks=%s, panic_attacks_when=%s, panic_attacks_bother=%s,
+                    anxiety=%s, anxiety_when=%s, anxiety_bother=%s,
+                    depression=%s, depression_when=%s, depression_bother=%s,
+                    self_anger_issues=%s, self_anger_issues_when=%s, self_anger_issues_bother=%s,
+                    recurring_negative_thoughts=%s, recurring_negative_thoughts_when=%s, recurring_negative_thoughts_bother=%s,
+                    low_self_esteem=%s, low_self_esteem_when=%s, low_self_esteem_bother=%s,
+                    poor_study_habits=%s, poor_study_habits_when=%s, poor_study_habits_bother=%s,
+                    poor_in_decision_making=%s, poor_in_decision_making_when=%s, poor_in_decision_making_bother=%s,
+                    impulsivity=%s, impulsivity_when=%s, impulsivity_bother=%s,
+                    poor_sleeping_habits=%s, poor_sleeping_habits_when=%s, poor_sleeping_habits_bother=%s,
+                    loss_of_appetite=%s, loss_of_appetite_when=%s, loss_of_appetite_bother=%s,
+                    over_eating=%s, over_eating_when=%s, over_eating_bother=%s,
+                    poor_hygiene=%s, poor_hygiene_when=%s, poor_hygiene_bother=%s,
+                    withdrawal_isolation=%s, withdrawal_isolation_when=%s, withdrawal_isolation_bother=%s,
+                    family_problem=%s, family_problem_when=%s, family_problem_bother=%s,
+                    other_relationship_problem=%s, other_relationship_problem_when=%s, other_relationship_problem_bother=%s,
+                    alcohol_addiction=%s, alcohol_addiction_when=%s, alcohol_addiction_bother=%s,
+                    gambling_addiction=%s, gambling_addiction_when=%s, gambling_addiction_bother=%s,
+                    drug_addiction=%s, drug_addiction_when=%s, drug_addiction_bother=%s,
+                    computer_addiction=%s, computer_addiction_when=%s, computer_addiction_bother=%s,
+                    sexual_harassment=%s, sexual_harassment_when=%s, sexual_harassment_bother=%s,
+                    sexual_abuse=%s, sexual_abuse_when=%s, sexual_abuse_bother=%s,
+                    physical_abuse=%s, physical_abuse_when=%s, physical_abuse_bother=%s,
+                    verbal_abuse=%s, verbal_abuse_when=%s, verbal_abuse_bother=%s,
+                    pre_marital_sex=%s, pre_marital_sex_when=%s, pre_marital_sex_bother=%s,
+                    teenage_pregnancy=%s, teenage_pregnancy_when=%s, teenage_pregnancy_bother=%s,
+                    abortion=%s, abortion_when=%s, abortion_bother=%s,
+                    extra_marital_affairs=%s, extra_marital_affairs_when=%s, extra_marital_affairs_bother=%s
+                WHERE student_id=%s
+            """, (
+                bullying, bullying_when, bullying_bother,
+                suicidal_thoughts, suicidal_thoughts_when, suicidal_thoughts_bother,
+                suicidal_attempts, suicidal_attempts_when, suicidal_attempts_bother,
+                panic_attacks, panic_attacks_when, panic_attacks_bother,
+                anxiety, anxiety_when, anxiety_bother,
+                depression, depression_when, depression_bother,
+                self_anger_issues, self_anger_issues_when, self_anger_issues_bother,
+                recurring_negative_thoughts, recurring_negative_thoughts_when, recurring_negative_thoughts_bother,
+                low_self_esteem, low_self_esteem_when, low_self_esteem_bother,
+                poor_study_habits, poor_study_habits_when, poor_study_habits_bother,
+                poor_in_decision_making, poor_in_decision_making_when, poor_in_decision_making_bother,
+                impulsivity, impulsivity_when, impulsivity_bother,
+                poor_sleeping_habits, poor_sleeping_habits_when, poor_sleeping_habits_bother,
+                loss_of_appetite, loss_of_appetite_when, loss_of_appetite_bother,
+                over_eating, over_eating_when, over_eating_bother,
+                poor_hygiene, poor_hygiene_when, poor_hygiene_bother,
+                withdrawal_isolation, withdrawal_isolation_when, withdrawal_isolation_bother,
+                family_problem, family_problem_when, family_problem_bother,
+                other_relationship_problem, other_relationship_problem_when, other_relationship_problem_bother,
+                alcohol_addiction, alcohol_addiction_when, alcohol_addiction_bother,
+                gambling_addiction, gambling_addiction_when, gambling_addiction_bother,
+                drug_addiction, drug_addiction_when, drug_addiction_bother,
+                computer_addiction, computer_addiction_when, computer_addiction_bother,
+                sexual_harassment, sexual_harassment_when, sexual_harassment_bother,
+                sexual_abuse, sexual_abuse_when, sexual_abuse_bother,
+                physical_abuse, physical_abuse_when, physical_abuse_bother,
+                verbal_abuse, verbal_abuse_when, verbal_abuse_bother,
+                pre_marital_sex, pre_marital_sex_when, pre_marital_sex_bother,
+                teenage_pregnancy, teenage_pregnancy_when, teenage_pregnancy_bother,
+                abortion, abortion_when, abortion_bother,
+                extra_marital_affairs, extra_marital_affairs_when, extra_marital_affairs_bother,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO behavior_information (
+                    student_id, bullying, bullying_when, bullying_bother,
+                    suicidal_thoughts, suicidal_thoughts_when, suicidal_thoughts_bother,
+                    suicidal_attempts, suicidal_attempts_when, suicidal_attempts_bother,
+                    panic_attacks, panic_attacks_when, panic_attacks_bother,
+                    anxiety, anxiety_when, anxiety_bother,
+                    depression, depression_when, depression_bother,
+                    self_anger_issues, self_anger_issues_when, self_anger_issues_bother,
+                    recurring_negative_thoughts, recurring_negative_thoughts_when, recurring_negative_thoughts_bother,
+                    low_self_esteem, low_self_esteem_when, low_self_esteem_bother,
+                    poor_study_habits, poor_study_habits_when, poor_study_habits_bother,
+                    poor_in_decision_making, poor_in_decision_making_when, poor_in_decision_making_bother,
+                    impulsivity, impulsivity_when, impulsivity_bother,
+                    poor_sleeping_habits, poor_sleeping_habits_when, poor_sleeping_habits_bother,
+                    loss_of_appetite, loss_of_appetite_when, loss_of_appetite_bother,
+                    over_eating, over_eating_when, over_eating_bother,
+                    poor_hygiene, poor_hygiene_when, poor_hygiene_bother,
+                    withdrawal_isolation, withdrawal_isolation_when, withdrawal_isolation_bother,
+                    family_problem, family_problem_when, family_problem_bother,
+                    other_relationship_problem, other_relationship_problem_when, other_relationship_problem_bother,
+                    alcohol_addiction, alcohol_addiction_when, alcohol_addiction_bother,
+                    gambling_addiction, gambling_addiction_when, gambling_addiction_bother,
+                    drug_addiction, drug_addiction_when, drug_addiction_bother,
+                    computer_addiction, computer_addiction_when, computer_addiction_bother,
+                    sexual_harassment, sexual_harassment_when, sexual_harassment_bother,
+                    sexual_abuse, sexual_abuse_when, sexual_abuse_bother,
+                    physical_abuse, physical_abuse_when, physical_abuse_bother,
+                    verbal_abuse, verbal_abuse_when, verbal_abuse_bother,
+                    pre_marital_sex, pre_marital_sex_when, pre_marital_sex_bother,
+                    teenage_pregnancy, teenage_pregnancy_when, teenage_pregnancy_bother,
+                    abortion, abortion_when, abortion_bother,
+                    extra_marital_affairs, extra_marital_affairs_when, extra_marital_affairs_bother
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
                 student_id, bullying, bullying_when, bullying_bother,
                 suicidal_thoughts, suicidal_thoughts_when, suicidal_thoughts_bother,
                 suicidal_attempts, suicidal_attempts_when, suicidal_attempts_bother,
@@ -2079,72 +2341,69 @@ def studentInventoryForm():
                 teenage_pregnancy, teenage_pregnancy_when, teenage_pregnancy_bother,
                 abortion, abortion_when, abortion_bother,
                 extra_marital_affairs, extra_marital_affairs_when, extra_marital_affairs_bother
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            student_id, bullying, bullying_when, bullying_bother,
-            suicidal_thoughts, suicidal_thoughts_when, suicidal_thoughts_bother,
-            suicidal_attempts, suicidal_attempts_when, suicidal_attempts_bother,
-            panic_attacks, panic_attacks_when, panic_attacks_bother,
-            anxiety, anxiety_when, anxiety_bother,
-            depression, depression_when, depression_bother,
-            self_anger_issues, self_anger_issues_when, self_anger_issues_bother,
-            recurring_negative_thoughts, recurring_negative_thoughts_when, recurring_negative_thoughts_bother,
-            low_self_esteem, low_self_esteem_when, low_self_esteem_bother,
-            poor_study_habits, poor_study_habits_when, poor_study_habits_bother,
-            poor_in_decision_making, poor_in_decision_making_when, poor_in_decision_making_bother,
-            impulsivity, impulsivity_when, impulsivity_bother,
-            poor_sleeping_habits, poor_sleeping_habits_when, poor_sleeping_habits_bother,
-            loss_of_appetite, loss_of_appetite_when, loss_of_appetite_bother,
-            over_eating, over_eating_when, over_eating_bother,
-            poor_hygiene, poor_hygiene_when, poor_hygiene_bother,
-            withdrawal_isolation, withdrawal_isolation_when, withdrawal_isolation_bother,
-            family_problem, family_problem_when, family_problem_bother,
-            other_relationship_problem, other_relationship_problem_when, other_relationship_problem_bother,
-            alcohol_addiction, alcohol_addiction_when, alcohol_addiction_bother,
-            gambling_addiction, gambling_addiction_when, gambling_addiction_bother,
-            drug_addiction, drug_addiction_when, drug_addiction_bother,
-            computer_addiction, computer_addiction_when, computer_addiction_bother,
-            sexual_harassment, sexual_harassment_when, sexual_harassment_bother,
-            sexual_abuse, sexual_abuse_when, sexual_abuse_bother,
-            physical_abuse, physical_abuse_when, physical_abuse_bother,
-            verbal_abuse, verbal_abuse_when, verbal_abuse_bother,
-            pre_marital_sex, pre_marital_sex_when, pre_marital_sex_bother,
-            teenage_pregnancy, teenage_pregnancy_when, teenage_pregnancy_bother,
-            abortion, abortion_when, abortion_bother,
-            extra_marital_affairs, extra_marital_affairs_when, extra_marital_affairs_bother
-        ))
+            ))
 
-        cur.execute("""
-            INSERT INTO psychological_consultations (
+        if is_update:
+            cur.execute("""
+                UPDATE psychological_consultations SET
+                    psychiatrist_before=%s,
+                    psychiatrist_reason=%s,
+                    psychiatrist_when=%s,
+                    psychologist_before=%s,
+                    psychologist_reason=%s,
+                    psychologist_when=%s,
+                    counselor_before=%s,
+                    counselor_reason=%s,
+                    counselor_when=%s
+                WHERE student_id=%s
+            """, (
+                psychiatrist_before, psychiatrist_reason, psychiatrist_when,
+                psychologist_before, psychologist_reason, psychologist_when,
+                counselor_before, counselor_reason, counselor_when,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO psychological_consultations (
+                    student_id,
+                    psychiatrist_before, psychiatrist_reason, psychiatrist_when,
+                    psychologist_before, psychologist_reason, psychologist_when,
+                    counselor_before, counselor_reason, counselor_when
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (
                 student_id,
                 psychiatrist_before, psychiatrist_reason, psychiatrist_when,
                 psychologist_before, psychologist_reason, psychologist_when,
                 counselor_before, counselor_reason, counselor_when
-            )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            student_id,
-            psychiatrist_before, psychiatrist_reason, psychiatrist_when,
-            psychologist_before, psychologist_reason, psychologist_when,
-            counselor_before, counselor_reason, counselor_when
-        ))
+            ))
 
-        cur.execute("""
-            INSERT INTO personal_descriptions (
-                student_id,personal_description, consent, consent_date
-            )
-            VALUES (%s,%s,%s, NOW())
-        """, (
-            student_id,personal_description, consent_value
-        ))
+        if is_update:
+            cur.execute("""
+                UPDATE personal_descriptions SET
+                    personal_description=%s,
+                    consent=%s,
+                    consent_date=NOW()
+                WHERE student_id=%s
+            """, (
+                personal_description, consent_value,
+                student_id
+            ))
+        else:
+            cur.execute("""
+                INSERT INTO personal_descriptions (
+                    student_id,personal_description, consent, consent_date
+                )
+                VALUES (%s,%s,%s, NOW())
+            """, (
+                student_id,personal_description, consent_value
+            ))
 
-        cur.execute("""
-            INSERT INTO notifications (student_id, exam_id, message)
-            VALUES (%s, %s, %s)
-        """, (student_id, session["exam_id"], "Student Inventory Form Submitted Successfully!"))
+        if not is_update:
+            cur.execute("""
+                INSERT INTO notifications (student_id, exam_id, message)
+                VALUES (%s, %s, %s)
+            """, (student_id, session["exam_id"], "Student Inventory Form Submitted Successfully!"))
         
         conn.commit()
         cur.close()
@@ -2155,11 +2414,13 @@ def studentInventoryForm():
 
     cur.execute("SELECT id, fullname, gender, email FROM student WHERE id = %s", (student_id,))
     student = cur.fetchone()
-    print(request.form)
+
     cur.close()
     conn.close()
 
-    return render_template("student/studentInventoryForm.html", student=student)
+    return render_template("student/studentInventoryForm.html", 
+        student=student, info=info, has_data=True if info else False, 
+        selected_reasons=selected_reasons, other_schools_selected=other_schools_selected)
 
 @student_bp.route("/studentInventoryResult")
 def studentInventoryResult():
@@ -2192,6 +2453,7 @@ def studentInventoryResult():
         SELECT 
             s.id AS id,
             s.fullname, s.gender, s.email, s.campus, s.photo,
+            c.campus_name, c.campus_address,
             sa.nickname, sa.present_address, sa.provincial_address,
             sa.date_of_birth, sa.place_of_birth, sa.age, sa.birth_order, sa.siblings_count,
             sa.civil_status, sa.religion, sa.nationality,
@@ -2251,6 +2513,7 @@ def studentInventoryResult():
         LEFT JOIN psychological_consultations sf ON sf.student_id = s.id
         LEFT JOIN personal_descriptions sg ON sg.student_id = s.id
         LEFT JOIN course sh ON sh.student_id = s.id
+        LEFT JOIN campus c ON s.campus = c.campus_name
         WHERE s.id = %s
     """, (student_id,))
 
@@ -2320,6 +2583,7 @@ def download_inventory_pdf(student_id):
         SELECT 
             s.id AS id,
             s.exam_id, s.fullname, s.gender, s.email, s.campus, s.photo,
+            c.campus_name, c.campus_address,
             sa.nickname, sa.present_address, sa.provincial_address,
             sa.date_of_birth, sa.place_of_birth, sa.age, sa.birth_order, sa.siblings_count,
             sa.civil_status, sa.religion, sa.nationality,
@@ -2329,8 +2593,7 @@ def download_inventory_pdf(student_id):
             sb.father_name, sb.father_age, sb.father_education, sb.father_occupation,
             sb.father_income, sb.father_contact, sb.mother_name, sb.mother_age, sb.mother_education,
             sb.mother_occupation, sb.mother_income, sb.mother_contact, 
-            sc.married_living_together, sc.living_not_married, sc.legally_separated,
-            sc.mother_widow, sc.father_widower, sc.separated, sc.father_another_family, sc.mother_another_family,
+            sc.parent_status, sc.father_another_family, sc.mother_another_family,
             sd.elementary_school_name, sd.elementary_year_graduated, sd.elementary_awards,
             sd.junior_high_school_name, sd.junior_high_year_graduated, sd.junior_high_awards,
             sd.senior_high_school_name, sd.senior_high_year_graduated, sd.senior_high_awards,
@@ -2349,7 +2612,7 @@ def download_inventory_pdf(student_id):
             se.poor_in_decision_making, se.poor_in_decision_making_when, se.poor_in_decision_making_bother,
             se.impulsivity, se.impulsivity_when, se.impulsivity_bother,
             se.poor_sleeping_habits, se.poor_sleeping_habits_when, se.poor_sleeping_habits_bother,
-            se.loos_of_appetite, se.loos_of_appetite_when, se.loos_of_appetite_bother,
+            se.loss_of_appetite, se.loss_of_appetite_when, se.loss_of_appetite_bother,
             se.over_eating, se.over_eating_when, se.over_eating_bother,
             se.poor_hygiene, se.poor_hygiene_when, se.poor_hygiene_bother,
             se.withdrawal_isolation, se.withdrawal_isolation_when, se.withdrawal_isolation_bother,
@@ -2370,7 +2633,7 @@ def download_inventory_pdf(student_id):
             sf.psychiatrist_before, sf.psychiatrist_reason, sf.psychiatrist_when,
             sf.psychologist_before, sf.psychologist_reason, sf.psychologist_when,
             sf.counselor_before, sf.counselor_reason, sf.counselor_when,
-            sg.personal_description
+            sg.personal_description, sg.consent, sg.consent_date, sh.course_name
         FROM student s
         LEFT JOIN personal_information sa ON sa.student_id = s.id
         LEFT JOIN family_background sb ON sb.student_id = s.id
@@ -2379,10 +2642,18 @@ def download_inventory_pdf(student_id):
         LEFT JOIN behavior_information se ON se.student_id = s.id
         LEFT JOIN psychological_consultations sf ON sf.student_id = s.id
         LEFT JOIN personal_descriptions sg ON sg.student_id = s.id
+        LEFT JOIN course sh ON sh.student_id = s.id
+        LEFT JOIN campus c ON s.campus = c.campus_name
         WHERE s.id = %s
     """, (student_id,))
 
     info = cur.fetchone()
+
+    student_photo_base64 = None
+
+    if info and info["photo"]:
+        student_photo_base64 = student_photo_to_base64(info["photo"])
+
     if not info:
         return "Student Inventory results not found.", 404
 
@@ -2431,7 +2702,8 @@ def download_inventory_pdf(student_id):
         other_reason=other_reason,
         other_schools_selected=other_schools_selected,
         other_school=other_school,
-        cpsu_logo_base64=cpsu_logo_base64
+        cpsu_logo_base64=cpsu_logo_base64,
+        student_photo_base64=student_photo_base64,
     )
 
     pdf_file = generate_pdf(html)

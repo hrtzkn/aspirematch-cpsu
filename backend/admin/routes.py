@@ -2700,15 +2700,14 @@ def download_admin_inventory_pdf(student_id):
             sb.father_name, sb.father_age, sb.father_education, sb.father_occupation,
             sb.father_income, sb.father_contact, sb.mother_name, sb.mother_age, sb.mother_education,
             sb.mother_occupation, sb.mother_income, sb.mother_contact,
-            sc.married_living_together, sc.living_not_married, sc.legally_separated,
-            sc.mother_widow, sc.father_widower, sc.separated, sc.father_another_family, sc.mother_another_family,
+            sc.parent_status, sc.father_another_family, sc.mother_another_family,
             sd.elementary_school_name, sd.elementary_year_graduated, sd.elementary_awards,
             sd.junior_high_school_name, sd.junior_high_year_graduated, sd.junior_high_awards,
             sd.senior_high_school_name, sd.senior_high_year_graduated, sd.senior_high_awards,
             sd.senior_high_track, sd.senior_high_strand, sd.subject_interested, sd.org_membership,
             sd.study_finance, sd.course_personal_choice, sd.influenced_by,
             sd.feeling_about_course, sd.personal_choice,
-            se.*, sf.*, sg.personal_description
+            se.*, sf.*, sg.personal_description, sg.consent, sg.consent_date, sh.course_name
         FROM student s
         LEFT JOIN personal_information sa ON sa.student_id = s.id
         LEFT JOIN family_background sb ON sb.student_id = s.id
@@ -2717,6 +2716,7 @@ def download_admin_inventory_pdf(student_id):
         LEFT JOIN behavior_information se ON se.student_id = s.id
         LEFT JOIN psychological_consultations sf ON sf.student_id = s.id
         LEFT JOIN personal_descriptions sg ON sg.student_id = s.id
+        LEFT JOIN course sh ON sh.student_id = s.id
         WHERE s.id = %s
     """, (student_id,))
 

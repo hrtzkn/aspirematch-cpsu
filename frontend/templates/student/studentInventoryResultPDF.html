@@ -33,7 +33,7 @@
 
         .subtitle1 {
             text-align: center;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             margin-bottom: 10px;
         }
@@ -63,7 +63,7 @@
         }
 
         .section-title {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: bold;
             color: #fff;
             background: #000;
@@ -89,6 +89,7 @@
         .no-border td {
             border: none;
             margin: 20px 0;
+            font-size: 12px;
         }
 
         .header-logo {
@@ -107,7 +108,7 @@
         }
 
         .header-text .address {
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
         }
 
@@ -156,40 +157,16 @@
             <div class="school">Central Philippines State University</div>
             <div class="school">{{ info.campus }}</div>
             <div class="address">
-                {% if info.campus == 'San Carlos Campus' %}
-                    Sitio Mabuni, Brgy. Guadalupe, San Carlos City, Negros Occidental
-                {% elif info.campus == 'Candoni Campus' %}
-                    Brgy. West, Candoni, Negros Occidental
-                {% elif info.campus == 'Cauayan Campus' %}
-                    Brgy. Poblacion Cauayan, Negros Occidental
-                {% elif info.campus == 'Moises Padilla Campus' %}
-                    Brgy. Poblacion, Moises Padilla, Negros Occidental
-                {% elif info.campus == 'Kabankalan Campus' %}
-                    Kabankalan City, Negros Occidental
-                {% elif info.campus == 'Hinigaran  Campus' %}
-                    Brgy. Gargato, Hinigaran, Negros Occidental
-                {% elif info.campus == 'Hinoba-an Campus' %}
-                    Brgy. Pook, Hinoba-an, Negros Occidental
-                {% elif info.campus == 'Sipalay Campus' %}
-                    Brgy. Gil Montilla, Sipalay City, Negros Occidental
-                {% elif info.campus == 'Victorias Campus' %}
-                    Brgy. XIV, Victorias City, Negros Occidental
-                {% elif info.campus == 'Valladolid Extension Campus' %}
-                    Valladolid, Negros Occidental
-                {% elif info.campus == 'Ilog  Campus' %}
-                    Brgy. 1, Municipality of Ilog, Negros Occidental
-                {% else %}
-                    Campus Address
-                {% endif %}
+                {{ info.campus_address }}
             </div>
             <div class="unit">Guidance and Counseling Unit</div>
         </td>
 
         <!-- RIGHT PHOTO -->
         <td style="width: 130px; text-align: right; vertical-align: top;">
-            {% if info.photo %}
+            {% if student_photo_base64 %}
                 <div class="student-photo-box">
-                    <img src="{{ info.photo }}">
+                    <img src="data:image/jpeg;base64,{{ student_photo_base64 }}">
                 </div>
             {% else %}
                 <div class="student-photo-box student-photo-placeholder">
@@ -223,13 +200,13 @@
 
 <table>
     <tr>
-        <td><strong>COURSE:</strong></td>
+        <td><strong>COURSE: {{ info.course_name }}</strong></td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td style="font-size: 10px;">
+        <td style="font-size: 12px;">
             Please fill up the following information below. All data will be treated
             with confidentiality.
         </td>
@@ -246,105 +223,105 @@
 </table>
 
 <table>
-    <tr><td><strong>Present Address:</strong> {{ info.present_address }}</td></tr>
+    <tr><td><strong>PRESENT ADDRESS:</strong> {{ info.present_address }}</td></tr>
 </table>
 
 <table>
-    <tr><td><strong>Provincial Address:</strong> {{ info.provincial_address }}</td></tr>
+    <tr><td><strong>PROVINCIAL ADDRESS:</strong> {{ info.provincial_address }}</td></tr>
 </table>
 
 <table>
     <tr>
-        <td width="25%"><strong>Date of Birth:</strong> {{ info.date_of_birth }}</td>
-        <td width="25%"><strong>Place of Birth:</strong> {{ info.place_of_birth }}</td>
-        <td width="25%"><strong>Birth Order:</strong> {{ info.birth_order }}</td>
-        <td width="25%"><strong>No. of Siblings:</strong> {{ info.siblings_count }}</td>
+        <td width="25%"><strong>DATE OF BIRTH:</strong> {{ info.date_of_birth }}</td>
+        <td width="25%"><strong>PLACE OF BIRTH:</strong> {{ info.place_of_birth }}</td>
+        <td width="25%"><strong>BIRTH ORDER:</strong> {{ info.birth_order }}</td>
+        <td width="25%"><strong>NUMBER OF SIBLINGS:</strong> {{ info.siblings_count }}</td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td><strong>Age:</strong> {{ info.age }}</td>
-        <td><strong>Gender:</strong> {{ info.gender }}</td>
-        <td><strong>Civil Status:</strong> {{ info.civil_status }}</td>
-        <td><strong>Religion:</strong> {{ info.religion }}</td>
-        <td><strong>Nationality:</strong> {{ info.nationality }}</td>
+        <td><strong>AGE:</strong> {{ info.age }}</td>
+        <td><strong>GENDER:</strong> {{ info.gender }}</td>
+        <td><strong>CIVIL STATUS:</strong> {{ info.civil_status }}</td>
+        <td><strong>RELIGION:</strong> {{ info.religion }}</td>
+        <td><strong>NATIONALITY:</strong> {{ info.nationality }}</td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td><strong>Home Phone:</strong> {{ info.home_phone }}</td>
-        <td><strong>Mobile No.:</strong> {{ info.mobile_no }}</td>
-        <td><strong>Email:</strong> {{ info.email }}</td>
+        <td><strong>HOME PHONE NO.:</strong> {{ info.home_phone }}</td>
+        <td><strong>MOBILE NO.:</strong> {{ info.mobile_no }}</td>
+        <td><strong>EMAIL ADD:</strong> {{ info.email }}</td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td><strong>Weight:</strong> {{ info.weight }}</td>
-        <td><strong>Height:</strong> {{ info.height }}</td>
-        <td><strong>Blood Type:</strong> {{ info.blood_type }}</td>
+        <td><strong>WEIGHT:</strong> {{ info.weight }}</td>
+        <td><strong>HEIGHT:</strong> {{ info.height }}</td>
+        <td><strong>BLOOD TYPE:</strong> {{ info.blood_type }}</td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td><strong>Hobbies / Interest:</strong> {{ info.hobbies }}</td>
-        <td><strong>Talents:</strong> {{ info.talents }}</td>
+        <td><strong>HOBBIES / INTEREST:</strong> {{ info.hobbies }}</td>
+        <td><strong>TALENTS:</strong> {{ info.talents }}</td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td width="67%"><strong>Emergency Contact:</strong> {{ info.emergency_name }}</td>
-        <td width="33%"><strong>Relationship:</strong> {{ info.emergency_relationship }}</td>
+        <td width="65%" style="font-size: 12px;"><strong>IN CASE OF EMERGENCY, PLEASE NOTIFY:</strong> {{ info.emergency_name }}</td>
+        <td width="35%"><strong>RELATIONSHIP:</strong> {{ info.emergency_relationship }}</td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td width="67%"><strong>Address:</strong> {{ info.emergency_address }}</td>
-        <td width="33%"><strong>Contact No.:</strong> {{ info.emergency_contact }}</td>
+        <td width="60%"><strong>ADDRESS:</strong> {{ info.emergency_address }}</td>
+        <td width="40%"><strong>CONTACT NO.:</strong> {{ info.emergency_contact }}</td>
     </tr>
 </table>
 
 <div class="section-title">FAMILY BACKGROUND</div>
 
-<table>
+<table style="width: 100%;">
     <tr>
-        <td width="33%"><strong>FATHER</strong></td>
-        <td width="34%" style="text-align:center;"><strong>DETAIL</strong></td>
-        <td width="33%"><strong>MOTHER</strong></td>
+        <td style="width: 30%;"><strong>FATHER</strong></td>
+        <td style="width: 40%; text-align:center;"></td>
+        <td style="width: 30%;"><strong>MOTHER</strong></td>
     </tr>
     <tr>
         <td>{{ info.father_name }}</td>
-        <td style="text-align:center;">Name</td>
+        <td style="text-align:center;">NAME</td>
         <td>{{ info.mother_name }}</td>
     </tr>
     <tr>
         <td>{{ info.father_age }}</td>
-        <td style="text-align:center;">Age</td>
+        <td style="text-align:center;">AGE</td>
         <td>{{ info.mother_age }}</td>
     </tr>
     <tr>
         <td>{{ info.father_education }}</td>
-        <td style="text-align:center;">Education</td>
+        <td style="text-align:center;">HIGHEST EDUCATIONAL ATTAINMENT</td>
         <td>{{ info.mother_education }}</td>
     </tr>
     <tr>
         <td>{{ info.father_occupation }}</td>
-        <td style="text-align:center;">Occupation</td>
+        <td style="text-align:center;">OCCUPATION</td>
         <td>{{ info.mother_occupation }}</td>
     </tr>
     <tr>
         <td>{{ info.father_income }}</td>
-        <td style="text-align:center;">Monthly Income</td>
+        <td style="text-align:center;">AVERAGE INCOME PER MONTH</td>
         <td>{{ info.mother_income }}</td>
     </tr>
     <tr>
         <td>{{ info.father_contact }}</td>
-        <td style="text-align:center;">Contact</td>
+        <td style="text-align:center;">CONTACT NUMBER/S:</td>
         <td>{{ info.mother_contact }}</td>
     </tr>
 </table>
@@ -353,19 +330,19 @@
 
 <table>
     <tr>
-        <td class="checkbox">{% if info.married_living_together %}[✓]{% else %}[ ]{% endif %} Married & Living Together</td>
-        <td class="checkbox">{% if info.legally_separated %}[✓]{% else %}[ ]{% endif %} Legally Separated</td>
-        <td class="checkbox">{% if info.living_not_married %}[✓]{% else %}[ ]{% endif %} Living-in</td>
-        <td class="checkbox">{% if info.mother_widow %}[✓]{% else %}[ ]{% endif %} Mother (Widow)</td>
-        <td class="checkbox">{% if info.father_widower %}[✓]{% else %}[ ]{% endif %} Father (Widower)</td>
+        <td class="checkbox">{% if info.parent_status == "married_living_together" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} MARRIED & LIVING TOGETHER</td>
+        <td class="checkbox">{% if info.parent_status == "legally_separated" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} LEGALLY SEPARATED</td>
+        <td class="checkbox">{% if info.parent_status == "living_not_married" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} LIVING IN (NOT MARRIED)</td>
+        <td class="checkbox">{% if info.parent_status == "mother_widow" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} MOTHER (WIDOW)</td>
+        <td class="checkbox">{% if info.parent_status == "father_widower" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} FATHER (WIDOWER)</td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td class="checkbox">{% if info.separated %}[✓]{% else %}[ ]{% endif %} Separated</td>
-        <td class="checkbox">{% if info.father_another_family %}[✓]{% else %}[ ]{% endif %} Father with another family</td>
-        <td class="checkbox">{% if info.mother_another_family %}[✓]{% else %}[ ]{% endif %} Mother with another family</td>
+        <td class="checkbox">{% if info.parent_status == "separated" %}☑{% else %}&nbsp;&nbsp;☐{% endif %} SEPARATED</td>
+        <td class="checkbox">{% if info.father_another_family %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Father with another family</td>
+        <td class="checkbox">{% if info.mother_another_family %}☑{% else %}&nbsp;&nbsp;☐{% endif %} Mother with another family</td>
     </tr>
 </table>
 
@@ -378,39 +355,39 @@
         <div class="section-title" style="margin-top: 100px;">ACADEMIC INFORMATION:</div>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;"><strong>LEVEL</strong></td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;"><strong>NAME OF SCHOOL</strong></td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;"><strong>YEAR GRADUATED</strong></td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;"><strong>AWARDS RECEIVED</strong></td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px; text-align: center;">LEVEL</td>
+                <td style="width: 40%; border: 1px solid #000; padding: 6px; font-size: 12px; text-align: center;">NAME OF SCHOOL</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px; text-align: center;">YEAR GRADUATED</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px; text-align: center;">AWARDS RECEIVED</td>
             </tr>
         </table>
         
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;"><strong>ELEMENTARY:</strong></td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.elementary_school_name }}</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.elementary_year_graduated }}</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.elementary_awards }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px;"><strong>ELEMENTARY:</strong></td>
+                <td style="width: 40%; border: 1px solid #000; padding: 6px; font-size: 12px;">{{ info.elementary_school_name }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px; text-align: center;">{{ info.elementary_year_graduated }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px;">{{ info.elementary_awards }}</td>
             </tr>
         </table>
         
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;"><strong>JUNIOR HIGH SCHOOL:</strong></td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.junior_high_school_name }}</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.junior_high_year_graduated }}</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.junior_high_awards }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 11px;"><strong>JUNIOR HIGH SCHOOL:</strong></td>
+                <td style="width: 40%; border: 1px solid #000; padding: 6px; font-size: 12px;">{{ info.junior_high_school_name }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px; text-align: center;">{{ info.junior_high_year_graduated }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px;">{{ info.junior_high_awards }}</td>
             </tr>
         </table>
         
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;"><strong>SENIOR HIGH SCHOOL:</strong>
-                TRACK: {{ info.senior_high_track }} STRAND: {{ info.senior_high_strand }}
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 11px;"><strong>SENIOR HIGH SCHOOL:</strong> <br>
+                TRACK: {{ info.senior_high_track }} <br> STRAND: {{ info.senior_high_strand }}
                 </td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.senior_high_school_name }}</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.senior_high_year_graduated }}</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{{ info.senior_high_awards }}</td>
+                <td style="width: 40%; border: 1px solid #000; padding: 6px; font-size: 12px;">{{ info.senior_high_school_name }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px; text-align: center;">{{ info.senior_high_year_graduated }}</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 6px; font-size: 12px;">{{ info.senior_high_awards }}</td>
             </tr>
         </table>
 
@@ -467,34 +444,56 @@
 
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{% if 'Quality education' in selected_reasons %}☑{% else %}☐{% endif %} Quality education</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{% if 'Free tuition fee' in selected_reasons %}☑{% else %}☐{% endif %} Free tuition fee</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{% if 'Competitive faculty members' in selected_reasons %}☑{% else %}☐{% endif %} Competitive faculty members</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 4px;">{% if 'Quality education' in selected_reasons %}☑{% else %}☐{% endif %} Quality education</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 4px;">{% if 'Free tuition fee' in selected_reasons %}☑{% else %}☐{% endif %} Free tuition fee</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 4px;">{% if 'Competitive faculty members' in selected_reasons %}☑{% else %}☐{% endif %} Competitive faculty members</td>
             </tr>
         </table>
 
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{% if 'Good facilities' in selected_reasons %}☑{% else %}☐{% endif %} Good facilities</td>
-                <td style="width: 40%; border: 1px solid #000; padding: 6px;">{% if 'Proximity and accessibility' in selected_reasons %}☑{% else %}☐{% endif %} Proximity and accessibility</td>
-                <td style="width: 40%; border: 1px solid #000; padding: 6px;">{% if 'Performance in the licensure examination' in selected_reasons %}☑{% else %}☐{% endif %} Performance in the licensure examination</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 4px;">{% if 'Good facilities' in selected_reasons %}☑{% else %}☐{% endif %} Good facilities</td>
+                <td style="width: 32%; border: 1px solid #000; padding: 4px;">{% if 'Proximity and accessibility' in selected_reasons %}☑{% else %}☐{% endif %} Proximity and accessibility</td>
+                <td style="width: 48%; border: 1px solid #000; padding: 4px;">{% if 'Performance in the licensure examination' in selected_reasons %}☑{% else %}☐{% endif %} Performance in the licensure examination</td>
             </tr>
         </table>
 
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 40%; border: 1px solid #000; padding: 6px;">{% if 'Recommended by friends' in selected_reasons %}☑{% else %}☐{% endif %} Recommended by friends, relatives, etc.</td>
-                <td style="width: 20%; border: 1px solid #000; padding: 6px;">{% if 'Good reputation' in selected_reasons %}☑{% else %}☐{% endif %} Good reputation</td>
-                <td style="width: 40%; border: 1px solid #000; padding: 6px;">{% if other_reason %}☑{% else %}☐{% endif %} Others, please specify: {{ other_reason }}</td>
+                <td style="width: 35%; border: 1px solid #000; padding: 4px; font-size: 12px;">{% if 'Recommended by friends' in selected_reasons %}☑{% else %}☐{% endif %} Recommended by friends, relatives, etc.</td>
+                <td style="width: 25%; border: 1px solid #000; padding: 4px;">{% if 'Good reputation' in selected_reasons %}☑{% else %}☐{% endif %} Good reputation</td>
+                <td style="width: 40%; border: 1px solid #000; padding: 4px; font-size: 12px;">{% if other_reason %}☑{% else %}☐{% endif %} Others, please specify: {{ other_reason }}</td>
+            </tr>
+        </table>
+        
+        <div class="section-title">What other school do you consider?</div>
+
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="width: 17%; border: 1px solid #000; padding: 4px;">{% if 'SUNN' in other_schools_selected %}☑{% else %}☐{% endif %} SUNN</td>
+                <td style="width: 17%; border: 1px solid #000; padding: 4px;">{% if 'CHMSU' in other_schools_selected %}☑{% else %}☐{% endif %} CHMSU</td>
+                <td style="width: 17%; border: 1px solid #000; padding: 4px;">{% if 'PNU-V' in other_schools_selected %}☑{% else %}☐{% endif %} PNU-V</td>
+                <td style="width: 17%; border: 1px solid #000; padding: 4px;">{% if 'TAÑON' in other_schools_selected %}☑{% else %}☐{% endif %} TAÑON</td>
+                <td style="width: 16%; border: 1px solid #000; padding: 4px;">{% if 'CSTR' in other_schools_selected %}☑{% else %}☐{% endif %} CSTR</td>
+                <td style="width: 16%; border: 1px solid #000; padding: 4px;">{% if 'UNO R' in other_schools_selected %}☑{% else %}☐{% endif %} UNO R</td>
+            </tr>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="width: 20%; border: 1px solid #000; padding: 4px;">{% if 'NORSU' in other_schools_selected %}☑{% else %}☐{% endif %} NORSU</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 4px;">{% if 'TUP-V' in other_schools_selected %}☑{% else %}☐{% endif %} TUP-V</td>
+                <td style="width: 20%; border: 1px solid #000; padding: 4px;">{% if 'CSR' in other_schools_selected %}☑{% else %}☐{% endif %} CSR</td>
+                <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if other_school %}☑{% else %}☐{% endif %} Others, please specify: {{ other_school }}</td>
             </tr>
         </table>
         
         <div class="section-title">BEHAVIOR INFORMATION:</div>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 40%; border: 1px solid #000; padding: 4px;"><strong>Check if you ever experience the following concerns:</strong></td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;"><strong>When did it happen?</strong></td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;"><strong>Does it still bothering you?</strong></td>
+                <td style="width: 40%; border: 1px solid #000; padding: 4px; text-align: center;">Check if you ever experience the following concerns:</td>
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">When did it happen?</td>
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">Does it still bothering you?</td>
             </tr>
         </table>
 
@@ -502,9 +501,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.bullying %}☑{% else %}☐{% endif %} Bullying</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.bullying_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.bullying %}
-                                {% if info.bullying_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.bullying_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.bullying %}
+                                {% if info['bullying_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['bullying_bother'] is not none and not info['bullying_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -514,10 +513,10 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.suicidal_thoughts %}☑{% else %}☐{% endif %} Suicidal thoughts</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.suicidal_thoughts_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.suicidal_thoughts %}
-                                {% if info.suicidal_thoughts_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.suicidal_thoughts_bother == 'no' %} ☐ YES  ☑ NO
-                                {% else %}  ☐ YES  ☐ NO {% endif %}
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.suicidal_thoughts %}
+                                {% if info['suicidal_thoughts_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['suicidal_thoughts_bother'] is not none and not info['suicidal_thoughts_bother'] %} ☐ YES  ☑ NO
+                                {% else %} ☐ YES  ☐ NO  {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
         </table>
@@ -526,9 +525,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.suicidal_attempts %}☑{% else %}☐{% endif %} Suicidal attempt</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.suicidal_attempts_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.suicidal_attempts %}
-                                {% if info.suicidal_attempts_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.suicidal_attempts_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.suicidal_attempts %}
+                                {% if info['suicidal_attempts_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['suicidal_attempts_bother'] is not none and not info['suicidal_attempts_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -538,9 +537,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.panic_attacks %}☑{% else %}☐{% endif %} Panic attacks</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.panic_attacks_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.panic_attacks %}
-                                {% if info.panic_attacks_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.panic_attacks_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.panic_attacks %}
+                                {% if info['panic_attacks_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['panic_attacks_bother'] is not none and not info['panic_attacks_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -550,9 +549,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.anxiety %}☑{% else %}☐{% endif %} Anxiety</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.anxiety_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.anxiety %}
-                                {% if info.anxiety_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.anxiety_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.anxiety %}
+                                {% if info['anxiety_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['anxiety_bother'] is not none and not info['anxiety_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -562,9 +561,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.depression %}☑{% else %}☐{% endif %} Depression</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.depression_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.depression %}
-                                {% if info.depression_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.depression_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.depression %}
+                                {% if info['depression_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['depression_bother'] is not none and not info['depression_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -574,9 +573,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.self_anger_issues %}☑{% else %}☐{% endif %} Self / Anger Management Issues</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.self_anger_issues_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.self_anger_issues %}
-                                {% if info.self_anger_issues_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.self_anger_issues_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.self_anger_issues %}
+                                {% if info['self_anger_issues_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['self_anger_issues_bother'] is not none and not info['self_anger_issues_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -586,9 +585,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.recurring_negative_thoughts %}☑{% else %}☐{% endif %}  Recurring negative thoughts</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.recurring_negative_thoughts_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.recurring_negative_thoughts %}
-                                {% if info.recurring_negative_thoughts_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.recurring_negative_thoughts_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.recurring_negative_thoughts %}
+                                {% if info['recurring_negative_thoughts_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['recurring_negative_thoughts_bother'] is not none and not info['recurring_negative_thoughts_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -598,9 +597,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.low_self_esteem %}☑{% else %}☐{% endif %} Low self-esteem</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.low_self_esteem_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.low_self_esteem %}
-                                {% if info.low_self_esteem_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.low_self_esteem_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.low_self_esteem %}
+                                {% if info['low_self_esteem_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['low_self_esteem_bother'] is not none and not info['low_self_esteem_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -610,9 +609,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.poor_study_habits %}☑{% else %}☐{% endif %} Poor study habits</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.poor_study_habits_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.poor_study_habits %}
-                                {% if info.poor_study_habits_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.poor_study_habits_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.poor_study_habits %}
+                                {% if info['poor_study_habits_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['poor_study_habits_bother'] is not none and not info['poor_study_habits_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -622,9 +621,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.poor_in_decision_making %}☑{% else %}☐{% endif %} Poor in decision making</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.poor_in_decision_making_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.poor_in_decision_making %}
-                                {% if info.poor_in_decision_making_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.poor_in_decision_making_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.poor_in_decision_making %}
+                                {% if info['poor_in_decision_making_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['poor_in_decision_making_bother'] is not none and not info['poor_in_decision_making_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -634,9 +633,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.impulsivity %}☑{% else %}☐{% endif %} Impulsivity</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.impulsivity_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.impulsivity %}
-                                {% if info.impulsivity_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.impulsivity_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.impulsivity %}
+                                {% if info['impulsivity_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['impulsivity_bother'] is not none and not info['impulsivity_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -646,9 +645,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.poor_sleeping_habits %}☑{% else %}☐{% endif %} Poor sleeping habits</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.poor_sleeping_habits_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.poor_sleeping_habits %}
-                                {% if info.poor_sleeping_habits_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.poor_sleeping_habits_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.poor_sleeping_habits %}
+                                {% if info['poor_sleeping_habits_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['poor_sleeping_habits_bother'] is not none and not info['poor_sleeping_habits_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -656,11 +655,11 @@
 
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.loos_of_appetite %}☑{% else %}☐{% endif %} Loss of appetite</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.loos_of_appetite_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.loos_of_appetite %}
-                                {% if info.loos_of_appetite_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.loos_of_appetite_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.loss_of_appetite %}☑{% else %}☐{% endif %} Loss of appetite</td>
+                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.loss_of_appetite_when or '' }}</td>
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.loss_of_appetite %}
+                                {% if info['loss_of_appetite_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['loss_of_appetite_bother'] is not none and not info['loss_of_appetite_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -670,9 +669,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.over_eating %}☑{% else %}☐{% endif %} Over-eating</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.over_eating_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.over_eating %}
-                                {% if info.over_eating_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.over_eating_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.over_eating %}
+                                {% if info['over_eating_bother'] %} ☑ YES  ☐ NO
+                                {% elif iinfo['over_eating_bother'] is not none and not info['over_eating_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -682,9 +681,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.poor_hygiene %}☑{% else %}☐{% endif %} Poor hygiene</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.poor_hygiene_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.poor_hygiene %}
-                                {% if info.poor_hygiene_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.poor_hygiene_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.poor_hygiene %}
+                                {% if info['poor_hygiene_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['poor_hygiene_bother'] is not none and not info['poor_hygiene_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -694,9 +693,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.withdrawal_isolation %}☑{% else %}☐{% endif %} Withdrawal / Isolation</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.withdrawal_isolation_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.withdrawal_isolation %}
-                                {% if info.withdrawal_isolation_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.withdrawal_isolation_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.withdrawal_isolation %}
+                                {% if info['withdrawal_isolation_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['withdrawal_isolation_bother'] is not none and not info['withdrawal_isolation_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -706,9 +705,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.family_problem %}☑{% else %}☐{% endif %} Family Problem</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.family_problem_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.family_problem %}
-                                {% if info.family_problem_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.family_problem_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.family_problem %}
+                                {% if info['family_problem_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['family_problem_bother'] is not none and not info['family_problem_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -718,9 +717,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.other_relationship_problem %}☑{% else %}☐{% endif %} Other Relationship Problem</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.other_relationship_problem_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.other_relationship_problem %}
-                                {% if info.other_relationship_problem_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.other_relationship_problem_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.other_relationship_problem %}
+                                {% if info['other_relationship_problem_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['other_relationship_problem_bother'] is not none and not info['other_relationship_problem_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -730,9 +729,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.alcohol_addiction %}☑{% else %}☐{% endif %} Alcohol Addiction</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.alcohol_addiction_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.alcohol_addiction %}
-                                {% if info.alcohol_addiction_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.alcohol_addiction_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.alcohol_addiction %}
+                                {% if info['alcohol_addiction_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['alcohol_addiction_bother'] is not none and not info['alcohol_addiction_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -742,9 +741,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.gambling_addiction %}☑{% else %}☐{% endif %} Gambling Addiction</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.gambling_addiction_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.gambling_addiction %}
-                                {% if info.gambling_addiction_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.gambling_addiction_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.gambling_addiction %}
+                                {% if info['gambling_addiction_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['gambling_addiction_bother'] is not none and not info['gambling_addiction_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -754,9 +753,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.drug_addiction %}☑{% else %}☐{% endif %} Drug Addiction</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.drug_addiction_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.drug_addiction %}
-                                {% if info.drug_addiction_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.drug_addiction_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.drug_addiction %}
+                                {% if info['drug_addiction_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['drug_addiction_bother'] is not none and not info['drug_addiction_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -766,9 +765,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.computer_addiction %}☑{% else %}☐{% endif %} Computer Addiction</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.computer_addiction_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.computer_addiction %}
-                                {% if info.computer_addiction_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.computer_addiction_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.computer_addiction %}
+                                {% if info['computer_addiction_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['computer_addiction_bother'] is not none and not info['computer_addiction_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -778,9 +777,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.sexual_harassment %}☑{% else %}☐{% endif %} Sexual Harassment</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.sexual_harassment_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.sexual_harassment %}
-                                {% if info.sexual_harassment_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.sexual_harassment_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.sexual_harassment %}
+                                {% if info['sexual_harassment_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['sexual_harassment_bother'] is not none and not info['sexual_harassment_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -790,9 +789,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.sexual_abuse %}☑{% else %}☐{% endif %} Sexual Abuse</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.sexual_abuse_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.sexual_abuse %}
-                                {% if info.sexual_abuse_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.sexual_abuse_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.sexual_abuse %}
+                                {% if info['sexual_abuse_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['sexual_abuse_bother'] is not none and not info['sexual_abuse_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -802,9 +801,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.physical_abuse %}☑{% else %}☐{% endif %} Physical Abuse</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.physical_abuse_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.physical_abuse %}
-                                {% if info.physical_abuse_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.physical_abuse_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.physical_abuse %}
+                                {% if info['physical_abuse_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['physical_abuse_bother'] is not none and not info['physical_abuse_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -814,9 +813,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.verbal_abuse %}☑{% else %}☐{% endif %} Verbal Abuse</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.verbal_abuse_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.verbal_abuse %}
-                                {% if info.verbal_abuse_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.verbal_abuse_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.verbal_abuse %}
+                                {% if info['verbal_abuse_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['verbal_abuse_bother'] is not none and not info['verbal_abuse_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -826,9 +825,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.pre_marital_sex %}☑{% else %}☐{% endif %} Pre-Marital Sex</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.pre_marital_sex_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.pre_marital_sex %}
-                                {% if info.pre_marital_sex_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.pre_marital_sex_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.pre_marital_sex %}
+                                {% if info['teenage_pregnancy_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['teenage_pregnancy_bother'] is not none and not info['teenage_pregnancy_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -838,7 +837,7 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.teenage_pregnancy %}☑{% else %}☐{% endif %} Teenage Pregnancy</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.teenage_pregnancy_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.teenage_pregnancy %}
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.teenage_pregnancy %}
                                 {% if info.teenage_pregnancy_bother == 'yes' %} ☑ YES  ☐ NO
                                 {% elif info.teenage_pregnancy_bother == 'no' %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
@@ -850,9 +849,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.abortion %}☑{% else %}☐{% endif %} Abortion</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.abortion_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.abortion %}
-                                {% if info.abortion_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.abortion_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.abortion %}
+                                {% if info['abortion_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['abortion_bother'] is not none and not info['abortion_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -862,9 +861,9 @@
             <tr>
                 <td style="width: 40%; border: 1px solid #000; padding: 4px;">{% if info.extra_marital_affairs %}☑{% else %}☐{% endif %} Extra Marital Affairs</td>
                 <td style="width: 30%; border: 1px solid #000; padding: 4px;">{{ info.extra_marital_affairs_when or '' }}</td>
-                <td style="width: 30%; border: 1px solid #000; padding: 4px;">{% if info.extra_marital_affairs %}
-                                {% if info.extra_marital_affairs_bother == 'yes' %} ☑ YES  ☐ NO
-                                {% elif info.extra_marital_affairs_bother == 'no' %} ☐ YES  ☑ NO
+                <td style="width: 30%; border: 1px solid #000; padding: 4px; text-align: center;">{% if info.extra_marital_affairs %}
+                                {% if info['extra_marital_affairs_bother'] %} ☑ YES  ☐ NO
+                                {% elif info['extra_marital_affairs_bother'] is not none and not info['extra_marital_affairs_bother'] %} ☐ YES  ☑ NO
                                 {% else %}  ☐ YES  ☐ NO {% endif %}
                             {% else %} ☐ YES  ☐ NO {% endif %}</td>
             </tr>
@@ -957,19 +956,19 @@
             and conditions set by your University.
         </p>
 
-        <table class="no-border" tyle="width: 100%; border-collapse: collapse;">
+        <table class="no-border" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
             <tr>
                 <td style="width: 40%; padding: 4px; text-align: center;">{{ info.fullname|upper }}</td>
-                <td style="width: 30%; padding: 4px;"></td>
-                <td style="width: 30%; padding: 4px;"></td>
+                <td style="width: 20%; padding: 4px;"></td>
+                <td style="width: 40%; padding: 4px; text-align: center;"> {{ info.consent_date }}</td>
             </tr>
         </table>
 
-        <table class="no-border" tyle="width: 100%; border-collapse: collapse;">
+        <table class="no-border" style="width: 100%; border-collapse: collapse;">
             <tr>
                 <td style="width: 40%; padding: 4px; border-top: 1px solid #000; text-align: center; ">SIGNATURE OVER PRINTED NAME</td>
-                <td style="width: 30%; padding: 4px;"></td>
-                <td style="width: 30%; padding: 4px; border-top: 1px solid #000; text-align: center;">DATE ACCOMPLISHED</td>
+                <td style="width: 20%; padding: 4px;"></td>
+                <td style="width: 40%; padding: 4px; border-top: 1px solid #000; text-align: center;">DATE ACCOMPLISHED</td>
             </tr>
         </table>
         
