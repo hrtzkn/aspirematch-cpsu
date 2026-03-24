@@ -84,5 +84,5 @@ app.register_blueprint(student_bp, url_prefix='/student')
 
 if __name__ == "__main__":
     app.run()
-    #app.run(host="127.0.0.1", port=5004, debug=True)
+    #app.run(host="127.0.0.1", port=5002, debug=True)
     #python -m backend.app  

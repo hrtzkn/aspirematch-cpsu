@@ -57,7 +57,7 @@
 
             <div id="typingIndicator"
                 class="hidden p-1 text-xs text-gray-600 italic">
-                Dan is typing...
+                Aspire is typing...
             </div>
         </div>
     </div>
@@ -133,7 +133,9 @@
             <h2 class="text-lg font-bold text-red-600 mb-2">
                 Session Expired
             </h2>
-
+            <p class="text-gray-600 text-sm">
+                Due to inactivity. Please log in again.
+            </p>
         </div>
 
     </div>
@@ -162,14 +164,14 @@ document.getElementById("chat-button").onclick = () => {
         showTyping();
         setTimeout(() => {
             hideTyping();
-            addMessage("dan", "Hello! I'm <b>Dan</b>, your AspireMatch virtual assistant. 😊");
+            addMessage("Aspire", "Hello! I'm <b>Aspire</b>, your AspireMatch virtual assistant. 😊");
         }, 500);
 
         setTimeout(() => {
             showTyping();
             setTimeout(() => {
                 hideTyping();
-                addMessage("dan", "AspireMatch is a <b>Career Interest Recommendation System</b> designed to help students discover recommended programs based on their strengths and preferences.");
+                addMessage("Aspire", "AspireMatch is a <b>Career Interest Recommendation System</b> designed to help students discover recommended programs based on their strengths and preferences.");
             }, 700);
         }, 1800);
 
@@ -177,7 +179,7 @@ document.getElementById("chat-button").onclick = () => {
             showTyping();
             setTimeout(() => {
                 hideTyping();
-                addMessage("dan",
+                addMessage("Aspire",
                     `Click below to see a quick step-by-step.
                     <button data-chat-action="true"
                             onclick="startGuide()"
@@ -193,10 +195,10 @@ document.getElementById("chat-button").onclick = () => {
 function addMessage(sender, textHtml) {
     let messagesDiv = $("chat-messages");
 
-    if (sender === "dan") {
+    if (sender === "Aspire") {
         messagesDiv.innerHTML += `
             <div class='p-2 md:p-3 bg-[#166D3B] text-white rounded-lg mb-2 text-sm md:text-base max-w-[90%]'>
-                Dan: ${textHtml}
+                Aspire: ${textHtml}
             </div>
         `;
     } else {
@@ -243,7 +245,7 @@ const GUIDE_STEPS = [
     {
         title: "Welcome to AspireMatch",
         body: `
-            <p>Welcome! This walkthrough will show you how AspireMatch works.</p>
+            <p>This walkthrough will show you how AspireMatch works.</p>
             <ul class="list-disc ml-4">
                 <li>Discover recommended college programs</li>
                 <li>Use your exam ID to view personalized results</li>
@@ -266,7 +268,7 @@ const GUIDE_STEPS = [
         body: `
             <p>After logging in:</p>
             <ul class="list-disc ml-4">
-                <li>Take the career interest assessment (if not already completed).</li>
+                <li>Take the career interest assessment (if not completed).</li>
                 <li>If you've completed it, view your recommended programs and AI explanation.</li>
             </ul>
         `
@@ -278,14 +280,13 @@ const GUIDE_STEPS = [
             <ul class="list-disc ml-4">
                 <li><b>Top recommended programs</b> based on your responses.</li>
                 <li>Short explanations about why each program suits you.</li>
-                <li>Tips on next steps (courses, skills to develop).</li>
             </ul>
         `
     },
     {
-        title: "Step 4 — Using the Chat Assistant (Dan)",
+        title: "Step 4 — Using the Chat Assistant (Aspire)",
         body: `
-            <p>Dan can help you:</p>
+            <p>Aspire can help you:</p>
             <ul class="list-disc ml-4">
                 <li>Explain your result details.</li>
                 <li>Guide you through the interface.</li>
@@ -345,7 +346,7 @@ function showGuideStep(index) {
 
     messagesDiv.innerHTML += `
         <div class="aspire-guide-placeholder p-2 bg-[#166D3B] text-white rounded mb-2">
-            Dan: ${html}
+            Aspire: ${html}
         </div>
     `;
 
@@ -376,7 +377,7 @@ function startGuide(autostart = false) {
         showGuideStep(0);
 
         if (!autostart) {
-            addMessage("dan", "I've started a quick step-by-step guide — use Next / Back to navigate.");
+            addMessage("Aspire", "I've started a quick step-by-step guide — use Next / Back to navigate.");
         }
     }, 800);
 }
@@ -386,7 +387,7 @@ window.endGuide = () => {
     const existing = messagesDiv.querySelector(".aspire-guide-placeholder");
     if (existing) existing.remove();
 
-    addMessage("dan", "Guide closed. If you want to run it again click 'Start Guide'.");
+    addMessage("Aspire", "Guide closed. If you want to run it again click 'Start Guide'.");
 };
 
 document.addEventListener("click", function (event) {

@@ -69,20 +69,26 @@ def ask_ai(messages, temperature=0.3, max_tokens=700):
     return response.choices[0].message.content
 
 def is_ask_about_aspirematch(question):
-    """
-    Returns True if the question is likely about AspireMatch,
-    otherwise False.
-    """
-    # Keywords related to AspireMatch
+    question_lower = question.lower()
+    
+    # simple keywords
     keywords = [
         "career", "survey", "recommendation", "result",
-        "dashboard", "guidance", "report", "aspirematch"
+        "dashboard", "guidance", "report", "aspirematch",
+        "strength", "weakness", "advice", "letter",
+        "program", "course", "hi", "hello", "hey", "aspire"
     ]
-    question_lower = question.lower()
-    return any(keyword in question_lower for keyword in keywords)
+    
+    # remove punctuation
+    clean_question = re.sub(r"[^\w\s]", "", question_lower)
+    words = clean_question.split()
+    
+    matched_keywords = [k for k in keywords if k in words or k in clean_question]
+    print("Matched keywords:", matched_keywords)
+    return bool(matched_keywords)
 
 SYSTEM_PROMPT = (
-    "You are Dan, the friendly AI assistant for AspireMatch. "
+    "You are Aspire, the friendly AI assistant for AspireMatch. "
     "AspireMatch is a student career interest recommendation application. "
     "You can answer questions about the app, including career surveys, survey results, career recommendations, "
     "student dashboards, guidance counselor reports, and system usage. "
@@ -92,6 +98,30 @@ SYSTEM_PROMPT = (
     "If a user asks anything outside of AspireMatch, politely respond: "
     "'I'm sorry, I can only answer questions related to the AspireMatch.'"
 )
+
+def fetch_and_rewrite_section(ai_text, section_name):
+    """
+    Extracts a section from ai_explanation and rewrites it in concise, student-friendly form
+    """
+    import re
+
+    # Extract section
+    pattern = rf"{section_name}\s*(.*?)(?=\n[A-Z][a-zA-Z ]+\n|$)"
+    match = re.search(pattern, ai_text, re.DOTALL | re.IGNORECASE)
+    section_text = match.group(1).strip() if match else "Not available yet."
+
+    # Prepare AI prompt for rewriting
+    prompt = [
+        {"role": "system", "content": f"Rewrite the following {section_name} section in 1-2 concise, student-friendly sentences. Keep it supportive and easy to understand."},
+        {"role": "user", "content": section_text}
+    ]
+
+    try:
+        rewritten = ask_ai(prompt)
+        return rewritten
+    except Exception as e:
+        print(f"Error rewriting section {section_name}:", e)
+        return section_text  # fallback to original if AI fails
 
 def generate_ai_insights(top_letters, preferred_program, fullname):
     letters_str = ", ".join(top_letters)
@@ -579,6 +609,14 @@ def chatbot():
     user_msg = request.json.get("message", "").strip()
     student_id = request.json.get("student_id")
     print("Student ID received:", student_id)
+    print("User message received:", user_msg)
+
+    if not user_msg:
+        return jsonify({"reply": "Please type a message to get a response."})
+
+    if not student_id:
+        return jsonify({"reply": "Student ID is missing. Please login again."})
+
     if not is_ask_about_aspirematch(user_msg):
         return jsonify({
             "reply": "I can only answer questions related to AspireMatch such as survey results or program recommendations."
@@ -588,156 +626,155 @@ def chatbot():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        top3 = []
-        programs = []
-        student_context = ""
+        pair_columns = ", ".join([f"ss.pair{i}" for i in range(1, 87)])
+        cur.execute(f"""
+            SELECT s.fullname, ss.ai_explanation, {pair_columns}
+            FROM student s
+            JOIN student_survey_answer ss
+            ON s.id = ss.student_id
+            WHERE s.id = %s
+            ORDER BY ss.id DESC
+            LIMIT 1
+        """, (student_id,))
+        result = cur.fetchone()
 
-        if student_id:
+        ai_text = result.get("ai_explanation", "")
 
-            pair_columns = ", ".join([f"ss.pair{i}" for i in range(1, 87)])
-
-            cur.execute(f"""
-                SELECT s.fullname, ss.ai_explanation, {pair_columns}
-                FROM student s
-                JOIN student_survey_answer ss
-                ON s.id = ss.student_id
-                WHERE s.id = %s
-                ORDER BY ss.id DESC
-                LIMIT 1
-            """, (student_id,))
-
-            result = cur.fetchone()
-
-            if result:
-
-                # Safe ai_explanation
-                ai_text = result.get("ai_explanation") or ""
-                ai_explanation = ai_text[:300] + ("..." if len(ai_text) > 300 else "")
-
-                student_context = f"{result['fullname']} career summary: {ai_explanation}"
-
-                # Collect letters
-                pair_letters = [
-                    result.get(f"pair{i}")
-                    for i in range(1, 87)
-                    if result.get(f"pair{i}")
-                ]
-
-                letter_count = Counter(pair_letters)
-                top3 = letter_count.most_common(3)
-
-                # Program recommendation
-                if top3:
-                    letters = [l for l, _ in top3]
-
-                    cur.execute("""
-                        SELECT program_name, category_letter, category_description
-                        FROM program
-                        WHERE category_letter = ANY(%s)
-                    """, (letters,))
-
-                    programs = cur.fetchall()
+        pair_letters = [result.get(f"pair{i}") for i in range(1, 87) if result.get(f"pair{i}")]
+        letter_count = Counter(pair_letters)
+        top3 = [l for l, _ in letter_count.most_common(3)]
 
         msg = user_msg.lower()
 
-        # ----------------------
-        # CAREER RESULT
-        # ----------------------
-        if "career" in msg:
+        if not result:
+            if any(k in msg for k in ["career interest survey result", "career interest result",
+                                        "interest survey result", "career survey result",
+                                        "career result", "result"]):
+                return jsonify({
+                    "reply": "Your survey results are not available yet. Please complete it first."
+                })
 
-            if not top3:
-                return jsonify({"reply": "Your survey results are not available yet."})
-
-            reply = "Based on Survey Your Top Career Interests:\n\n"
-
-            for letter, _ in top3:
-                description = letter_descriptions.get(letter, "")
-                ai_message = ai_responses.get(letter, [""])[0]
-                reply += f"{letter} – {description}\n{ai_message}\n\n"
-
-            return jsonify({"reply": reply})
-
-        # ----------------------
-        # PROGRAM RECOMMENDATION
-        # ----------------------
-        if "recommend" in msg or "program" in msg or "course" in msg:
-
-            if not top3:
-                return jsonify({"reply": "Your survey results are not available yet."})
-
-            top_letters = [letter for letter, _ in top3]
-
-            # Fetch programs where category_letter overlaps with top_letters
-            cur.execute("""
-                SELECT program_name, category_letter
-                FROM program
-                WHERE string_to_array(category_letter, ',') && %s
-                LIMIT 5
-            """, (top_letters,))
-
-            programs = cur.fetchall()
-
-            if not programs:
-                return jsonify({"reply": "No program recommendations found yet."})
-
-            reply = "📚 Recommended Programs Based on Your Top Career Letters:\n\n"
-
-            for prog in programs:
-                # Determine which of student's letters match this program
-                program_letters = prog['category_letter'].split(',')
-                matched_letters = [l for l in top_letters if l in program_letters]
-
-                # Explanation based on matched letters
-                explanation = f"This program matches your top interests {', '.join(matched_letters)}."
-
-                # Random AI-style explanation from ai_responses based on matched letters
-                ai_msgs = []
-                for l in matched_letters:
-                    if l in ai_responses:
-                        ai_msgs.append(random.choice(ai_responses[l]))
-
-                ai_explanation = " ".join(ai_msgs) if ai_msgs else explanation
-
-                reply += f"- {prog['program_name']}: {explanation} {ai_explanation}\n"
-
-            return jsonify({"reply": reply.strip()})
-        
-        # ----------------------
-        # SURVEY RESULT
-        # ----------------------
-        if "result" in msg:
-
-            if not result or not result.get("ai_explanation"):
-                return jsonify({"reply": "Your survey results are not available yet."})
-
-            ai_text = result["ai_explanation"]
-            reply = f"📄 Your AspireMatch Survey Result:\n\n{ai_text}"
-
-            return jsonify({"reply": reply})
-
-        # ----------------------
-        # SURVEY INFO
-        # ----------------------
-        if "survey" in msg:
+            if any(k in msg for k in ["recommended program", "recommended course", "course and program"]):
+                return jsonify({
+                    "reply": "Please complete a survey first."
+                })
 
             return jsonify({
-                "reply": (
-                    "The AspireMatch survey identifies which CPSU programs best match "
-                    "your interests and strengths based on your answers."
-                )
+                "reply": "Your survey results are not available yet."
+            })
+        
+        if not ai_text or ai_text.strip() == "":
+            if any(k in msg for k in [
+                "strength", "strengths",
+                "weakness", "weaknesses",
+                "career letter explanation",
+                "career explanation",
+                "advice", "career advice",
+                "personalized career advice"
+            ]):
+                return jsonify({
+                    "reply": "Generate an AI explanation first, go to RESULT then select CAREER INTEREST and click the button GENERATE AI EXPLANATION."
+                })
+
+        if any(k in msg for k in ["career letter explanation", "letter explanation", "career explanation"]):
+            rewritten = fetch_and_rewrite_section(ai_text, "Career Letter Explanation")
+            return jsonify({"reply": rewritten})
+
+        if any(k in msg for k in ["strengths", "strength"]):
+            rewritten = fetch_and_rewrite_section(ai_text, "Strengths")
+            return jsonify({"reply": rewritten})
+
+        if any(k in msg for k in ["weaknesses", "weakness"]):
+            rewritten = fetch_and_rewrite_section(ai_text, "Weaknesses")
+            return jsonify({"reply": rewritten})
+
+        if any(k in msg for k in ["personalized career advice", "career advice", "advice"]):
+            rewritten = fetch_and_rewrite_section(ai_text, "Personalized Career Advice")
+            return jsonify({"reply": rewritten})
+
+        if any(k in msg for k in ["recommended program", "recommended course", "course and program"]):
+            if not top3:
+                return jsonify({"reply": "Your survey results are not available yet."})
+
+            cur.execute("SELECT program_name, category_letter FROM program")
+            all_programs = cur.fetchall()
+            matched_programs = []
+            for prog in all_programs:
+                prog_letters = [l.strip() for l in prog["category_letter"].split(",")]
+                score = sum(1 for l in top3 if l in prog_letters)
+                if score > 0:
+                    matched_programs.append((prog, score))
+            matched_programs = sorted(matched_programs, key=lambda x: x[1], reverse=True)[:3]
+
+            if not matched_programs:
+                return jsonify({"reply": "No program recommendations found yet."})
+
+            reply_lines = []
+            reply_lines.append("Top Recommended Programs:\n")
+
+            for prog, score in matched_programs:
+                reply_lines.append(f"• {prog['program_name']}")
+
+            reply_lines.append("\n These programs are recommended since your top letter are : {', '.join(top3)}\n")
+
+            for letter in top3:
+                desc = letter_descriptions.get(letter, "No description available.")
+                reply_lines.append(f"• {letter} - {desc}")
+
+            # Join with proper line breaks
+            final_reply = "\n".join(reply_lines)
+
+            return jsonify({"reply": final_reply})
+
+        # Survey Result
+        if any(k in msg for k in ["career interest survey result", "career interest result",
+                                   "interest survey result", "career survey result",
+                                   "career result", "result"]):
+            if not ai_text:
+                return jsonify({
+                    "reply": "Your survey results are not available yet. Please complete a survey first."
+                }) 
+        
+            prompt = [
+                {"role": "system", "content": "Summarize this career result briefly in 3-5 sentences for a student."},
+                {"role": "user", "content": ai_text}
+            ]
+            try:
+                short_summary = ask_ai(prompt)
+                return jsonify({"reply": f"Your Career Result:\n\n{short_summary}"})
+            except Exception as e:
+                print("Error in Career Result:", e)
+                return jsonify({"reply": "Sorry, I couldn't answer your career result right now."})
+
+        # Survey Info
+        if any(k in msg for k in ["career interest survey", "career survey", "interest survey"]):
+            return jsonify({
+                "reply": "The AspireMatch survey identifies which CPSU programs best match your interests and strengths based on your answers."
+            })
+        
+        if any(k in msg for k in ["hi", "hello", "hey", "aspire"]):
+            return jsonify({
+                "reply": "Hello! I'm Aspire, your AspireMatch virtual assistant. How can I assist you today?"
             })
 
-        # ----------------------
-        # AI FALLBACK
-        # ----------------------
+        # Program List
+        if "program" in msg or "course" in msg:
+            cur.execute("SELECT program_name FROM program")
+            programs = cur.fetchall()
+            program_list = "\n".join([f"• {p['program_name']}" for p in programs])
+            return jsonify({"reply": f"Available Programs:\n\n{program_list}"})
+
+        # Default: fallback AI
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_msg}
         ]
-
-        reply = ask_ai(messages)
-
-        return jsonify({"reply": reply})
+        try:
+            reply = ask_ai(messages)
+            return jsonify({"reply": reply})
+        except Exception as e:
+            print("Error in fallback AI:", e)
+            return jsonify({"reply": "Sorry, I couldn't process your question right now."})
 
     except Exception as e:
         print("Chatbot error:", e)
@@ -2838,6 +2875,11 @@ def upload_student_photo():
 
 @student_bp.route("/logout")
 def logout():
+    reason = request.args.get("reason")
+
     session.clear()
-    flash("Session expired due to inactivity.", "session_expired")
+
+    if reason == "expired":
+        flash("Session expired due to inactivity.", "session_expired")
+
     return redirect(url_for("student.login_page"))

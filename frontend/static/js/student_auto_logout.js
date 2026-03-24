@@ -5,7 +5,7 @@ function resetTimer() {
     clearTimeout(inactivityTimer);
 
     inactivityTimer = setTimeout(() => {
-        window.location.href = "/student/logout";
+        window.location.href = "/student/logout?reason=expired";
     }, inactivityTime);
 }
 
