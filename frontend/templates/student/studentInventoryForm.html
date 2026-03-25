@@ -968,9 +968,9 @@
               value="{{ info['low_self_esteem_when'] or '' }}">
           <div class="text-center p-2 border border-black">
             <input type="radio" name="low_self_esteem_bother" value="yes" disabled id="low_self_esteem_bother_yes" {% if info['low_self_esteem_bother'] %}checked{% endif %}>
-            <label>YES</label>
+            <label for="low_self_esteem_bother_yes">YES</label>
             <input type="radio" name="low_self_esteem_bother" value="no" disabled id="low_self_esteem_bother_no" class="ml-4" {% if info['low_self_esteem_bother'] is not none and not info['low_self_esteem_bother'] %}checked{% endif %}>
-            <label>NO</label>
+            <label for="low_self_esteem_bother_no">NO</label>
           </div>
         </div>
 
@@ -983,9 +983,9 @@
               value="{{ info['poor_study_habits_when'] or '' }}">
           <div class="text-center p-2 border border-black">
             <input type="radio" name="poor_study_habits_bother" value="yes" disabled id="poor_study_habits_bother_yes" {% if info['poor_study_habits_bother'] %}checked{% endif %}>
-            <label>YES</label>
+            <label for="poor_study_habits_bother_yes">YES</label>
             <input type="radio" name="poor_study_habits_bother" value="no" disabled id="poor_study_habits_bother_no" class="ml-4" {% if info['poor_study_habits_bother'] is not none and not info['poor_study_habits_bother'] %}checked{% endif %}>
-            <label>NO</label>
+            <label for="poor_study_habits_bother_no">NO</label>
           </div>
         </div>
 
@@ -998,9 +998,9 @@
               value="{{ info['poor_in_decision_making_when'] or '' }}">
           <div class="text-center p-2 border border-black">
             <input type="radio" name="poor_in_decision_making_bother" value="yes" disabled id="poor_in_decision_making_bother_yes" {% if info['poor_in_decision_making_bother'] %}checked{% endif %}>
-            <label>YES</label>
+            <label for="poor_in_decision_making_bother_yes">YES</label>
             <input type="radio" name="poor_in_decision_making_bother" value="no" disabled id="poor_in_decision_making_bother_no" class="ml-4" {% if info['poor_in_decision_making_bother'] is not none and not info['poor_in_decision_making_bother'] %}checked{% endif %}>
-            <label>NO</label>
+            <label for="poor_in_decision_making_bother_no">NO</label>
           </div>
         </div>
 
@@ -1013,9 +1013,9 @@
               value="{{ info['impulsivity_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="impulsivity_bother_yes" name="impulsivity_bother" value="yes" disabled {% if info['impulsivity_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="impulsivity_bother_yes">YES</label>
                   <input type="radio" id="impulsivity_bother_no" name="impulsivity_bother" value="no" disabled class="ml-4" {% if info['impulsivity_bother'] is not none and not info['impulsivity_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="impulsivity_bother_no">NO</label>
               </div>
           </div>
 
@@ -1028,9 +1028,9 @@
               value="{{ info['poor_sleeping_habits_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="poor_sleeping_habits_bother_yes" name="poor_sleeping_habits_bother" value="yes" disabled {% if info['poor_sleeping_habits_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="poor_sleeping_habits_bother_yes">YES</label>
                   <input type="radio" id="poor_sleeping_habits_bother_no" name="poor_sleeping_habits_bother" value="no" disabled class="ml-4" {% if info['poor_sleeping_habits_bother'] is not none and not info['poor_sleeping_habits_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="poor_sleeping_habits_bother_no">NO</label>
               </div>
           </div>
 
@@ -1043,9 +1043,9 @@
               value="{{ info['loss_of_appetite_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="loss_of_appetite_bother_yes" name="loss_of_appetite_bother" value="yes" disabled {% if info['loss_of_appetite_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="loss_of_appetite_bother_yes">YES</label>
                   <input type="radio" id="loss_of_appetite_bother_no" name="loss_of_appetite_bother" value="no" disabled class="ml-4" {% if info['loss_of_appetite_bother'] is not none and not info['loss_of_appetite_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="loss_of_appetite_bother_no">NO</label>
               </div>
           </div>
 
@@ -1058,9 +1058,9 @@
               value="{{ info['over_eating_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="over_eating_bother_yes" name="over_eating_bother" value="yes" disabled {% if info['over_eating_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="over_eating_bother_yes">YES</label>
                   <input type="radio" id="over_eating_bother_no" name="over_eating_bother" value="no" disabled class="ml-4" {% if info['over_eating_bother'] is not none and not info['over_eating_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="over_eating_bother_no">NO</label>
               </div>
           </div>
 
@@ -1075,7 +1075,7 @@
                   <input type="radio" id="poor_hygiene_bother_yes" name="poor_hygiene_bother" value="yes" disabled {% if info['poor_hygiene_bother'] %}checked{% endif %}>
                   <label>YES</label>
                   <input type="radio" id="poor_hygiene_bother_no" name="poor_hygiene_bother" value="no" disabled class="ml-4" {% if info['poor_hygiene_bother'] is not none and not info['poor_hygiene_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="poor_hygiene_bother_no">NO</label>
               </div>
           </div>
 
@@ -1112,9 +1112,9 @@
               value="{{ info['withdrawal_isolation_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="withdrawal_isolation_bother_yes" name="withdrawal_isolation_bother" value="yes" disabled {% if info['withdrawal_isolation_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="withdrawal_isolation_bother_yes">YES</label>
                   <input type="radio" id="withdrawal_isolation_bother_no" name="withdrawal_isolation_bother" value="no" disabled class="ml-4" {% if info['withdrawal_isolation_bother'] is not none and not info['withdrawal_isolation_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="withdrawal_isolation_bother_no">NO</label>
               </div>
           </div>
 
@@ -1127,9 +1127,9 @@
               value="{{ info['family_problem_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="family_problem_bother_yes" name="family_problem_bother" value="yes" disabled {% if info['family_problem_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="family_problem_bother_yes">YES</label>
                   <input type="radio" id="family_problem_bother_no" name="family_problem_bother" value="no" disabled class="ml-4" {% if info['family_problem_bother'] is not none and not info['family_problem_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="family_problem_bother_no">NO</label>
               </div>
           </div>
 
@@ -1142,9 +1142,9 @@
               value="{{ info['other_relationship_problem_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="other_relationship_problem_bother_yes" name="other_relationship_problem_bother" value="yes" disabled {% if info['other_relationship_problem_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="other_relationship_problem_bother_yes">YES</label>
                   <input type="radio" id="other_relationship_problem_bother_no" name="other_relationship_problem_bother" value="no" disabled class="ml-4" {% if info['other_relationship_problem_bother'] is not none and not info['other_relationship_problem_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="other_relationship_problem_bother_no">NO</label>
               </div>
           </div>
 
@@ -1157,9 +1157,9 @@
               value="{{ info['alcohol_addiction_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="alcohol_addiction_bother_yes" name="alcohol_addiction_bother" value="yes" disabled {% if info['alcohol_addiction_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="alcohol_addiction_bother_yes">YES</label>
                   <input type="radio" id="alcohol_addiction_bother_no" name="alcohol_addiction_bother" value="no" disabled class="ml-4" {% if info['alcohol_addiction_bother'] is not none and not info['alcohol_addiction_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="alcohol_addiction_bother_no">NO</label>
               </div>
           </div>
 
@@ -1172,9 +1172,9 @@
               value="{{ info['gambling_addiction_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="gambling_addiction_bother_yes" name="gambling_addiction_bother" value="yes" disabled {% if info['gambling_addiction_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="gambling_addiction_bother_yes">YES</label>
                   <input type="radio" id="gambling_addiction_bother_no" name="gambling_addiction_bother" value="no" disabled class="ml-4" {% if info['gambling_addiction_bother'] is not none and not info['gambling_addiction_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="gambling_addiction_bother_no">NO</label>
               </div>
           </div>
 
@@ -1187,9 +1187,9 @@
               value="{{ info['drug_addiction_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="drug_addiction_bother_yes" name="drug_addiction_bother" value="yes" disabled {% if info['drug_addiction_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="drug_addiction_bother_yes">YES</label>
                   <input type="radio" id="drug_addiction_bother_no" name="drug_addiction_bother" value="no" disabled class="ml-4" {% if info['drug_addiction_bother'] is not none and not info['drug_addiction_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="drug_addiction_bother_no">NO</label>
               </div>
           </div>
 
@@ -1202,9 +1202,9 @@
               value="{{ info['computer_addiction_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="computer_addiction_bother_yes" name="computer_addiction_bother" value="yes" disabled {% if info['computer_addiction_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="computer_addiction_bother_yes">YES</label>
                   <input type="radio" id="computer_addiction_bother_no" name="computer_addiction_bother" value="no" disabled class="ml-4" {% if info['computer_addiction_bother'] is not none and not info['computer_addiction_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="computer_addiction_bother_no">NO</label>
               </div>
           </div>
 
@@ -1217,9 +1217,9 @@
               value="{{ info['sexual_harassment_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="sexual_harassment_bother_yes" name="sexual_harassment_bother" value="yes" disabled {% if info['sexual_harassment_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="sexual_harassment_bother_yes">YES</label>
                   <input type="radio" id="sexual_harassment_bother_no" name="sexual_harassment_bother" value="no" disabled class="ml-4" {% if info['sexual_harassment_bother'] is not none and not info['sexual_harassment_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="sexual_harassment_bother_no">NO</label>
               </div>
           </div>
 
@@ -1256,9 +1256,9 @@
               value="{{ info['sexual_abuse_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="sexual_abuse_bother_yes" name="sexual_abuse_bother" value="yes" disabled {% if info['sexual_abuse_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="sexual_abuse_bother_yes">YES</label>
                   <input type="radio" id="sexual_abuse_bother_no" name="sexual_abuse_bother" value="no" disabled class="ml-4" {% if info['sexual_abuse_bother'] is not none and not info['sexual_abuse_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="sexual_abuse_bother_no">NO</label>
               </div>
           </div>
 
@@ -1271,9 +1271,9 @@
               value="{{ info['physical_abuse_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="physical_abuse_bother_yes" name="physical_abuse_bother" value="yes" disabled {% if info['physical_abuse_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="physical_abuse_bother_yes">YES</label>
                   <input type="radio" id="physical_abuse_bother_no" name="physical_abuse_bother" value="no" disabled class="ml-4" {% if info['physical_abuse_bother'] is not none and not info['physical_abuse_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="physical_abuse_bother_no">NO</label>
               </div>
           </div>
 
@@ -1286,9 +1286,9 @@
               value="{{ info['verbal_abuse_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="verbal_abuse_bother_yes" name="verbal_abuse_bother" value="yes" disabled {% if info['verbal_abuse_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="verbal_abuse_bother_yes">YES</label>
                   <input type="radio" id="verbal_abuse_bother_no" name="verbal_abuse_bother" value="no" disabled class="ml-4" {% if info['verbal_abuse_bother'] is not none and not info['verbal_abuse_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="verbal_abuse_bother_no">NO</label>
               </div>
           </div>
 
@@ -1301,9 +1301,9 @@
               value="{{ info['pre_marital_sex_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="pre_marital_sex_bother_yes" name="pre_marital_sex_bother" value="yes" disabled {% if info['pre_marital_sex_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="pre_marital_sex_bother_yes">YES</label>
                   <input type="radio" id="pre_marital_sex_bother_no" name="pre_marital_sex_bother" value="no" disabled class="ml-4" {% if info['pre_marital_sex_bother'] is not none and not info['pre_marital_sex_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="pre_marital_sex_bother_no">NO</label>
               </div>
           </div>
 
@@ -1316,9 +1316,9 @@
               value="{{ info['teenage_pregnancy_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="teenage_pregnancy_bother_yes" name="teenage_pregnancy_bother" value="yes" disabled {% if info['teenage_pregnancy_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="teenage_pregnancy_bother_yes">YES</label>
                   <input type="radio" id="teenage_pregnancy_bother_no" name="teenage_pregnancy_bother" value="no" disabled class="ml-4" {% if info['teenage_pregnancy_bother'] is not none and not info['teenage_pregnancy_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="teenage_pregnancy_bother_no">NO</label>
               </div>
           </div>
 
@@ -1331,9 +1331,9 @@
               value="{{ info['abortion_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="abortion_bother_yes" name="abortion_bother" value="yes" disabled {% if info['abortion_bother'] %}checked{% endif %}>
-                  <label>YES</label>
+                  <label for="abortion_bother_yes">YES</label>
                   <input type="radio" id="abortion_bother_no" name="abortion_bother" value="no" disabled class="ml-4" {% if info['abortion_bother'] is not none and not info['abortion_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="abortion_bother_no">NO</label>
               </div>
           </div>
 
@@ -1346,9 +1346,9 @@
               value="{{ info['extra_marital_affairs_when'] or '' }}">
               <div class="text-center p-2 border border-black">
                   <input type="radio" id="extra_marital_affairs_bother_yes" name="extra_marital_affairs_bother" value="yes" disabled{% if info['extra_marital_affairs_bother'] %}checked{% endif %}>
-                  <label class="">YES</label>
+                  <label for="extra_marital_affairs_bother_yes"">YES</label>
                   <input type="radio" id="extra_marital_affairs_bother_no" name="extra_marital_affairs_bother" value="no" disabled class="ml-4" {% if info['extra_marital_affairs_bother'] is not none and not info['extra_marital_affairs_bother'] %}checked{% endif %}>
-                  <label>NO</label>
+                  <label for="extra_marital_affairs_bother_no">NO</label>
               </div>
           </div>
 

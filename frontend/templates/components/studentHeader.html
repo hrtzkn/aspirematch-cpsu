@@ -79,38 +79,37 @@
     </div>
 </div>
 
-<!-- Logout Button -->
+<!-- LOGOUT BUTTON -->
 <div class="relative">
-    <div id="logoutBtn"
+    <button id="logoutBtn"
         class="bg-[#f6ebcd] text-[#166D3B]
                p-2 sm:p-3
-               rounded-full cursor-pointer">
+               rounded-full
+               flex items-center justify-center">
         <img src="/static/images/logout.png" alt="Logout Logo" class="max-h-6 w-auto">
-    </div>
+    </button>
 </div>
 
-<!-- Modal -->
-<div id="logoutModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    
-    <!-- Modal Content -->
-    <div class="bg-white text-black rounded-lg p-6 w-[90%] max-w-sm text-center relative">
-        <h2 class="text-lg font-semibold mb-4">
-            Are you sure you want to logout?
-        </h2>
+<!-- LOGOUT POPUP (TOP RIGHT like admin) -->
+<div id="logoutPopup"
+     class="hidden fixed top-16 lg:top-2 right-4 lg:right-24 bg-white shadow-xl rounded-lg p-2 w-60 z-50 border">
 
-        <div class="flex justify-center gap-4">
-            <!-- Cancel -->
-            <button id="cancelLogout"
-                class="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400">
-                Cancel
-            </button>
+    <p class="text-sm font-semibold text-gray-800 mb-2">
+        Are you sure you want to logout?
+    </p>
 
-            <!-- Logout -->
-            <a href="{{ url_for('student.logout') }}"
-               class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-                Logout
-            </a>
-        </div>
+    <div class="flex justify-between gap-2">
+        <!-- Cancel -->
+        <button id="cancelLogout"
+                class="px-3 py-1 text-sm text-black bg-gray-300 rounded hover:bg-gray-400">
+            Cancel
+        </button>
+
+        <!-- Yes -->
+        <a href="{{ url_for('student.logout') }}"
+           class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+            Yes
+        </a>
     </div>
 </div>
 
@@ -126,7 +125,7 @@ const STUDENT_ID = document
 
 <script>
 const logoutBtn = document.getElementById("logoutBtn");
-const logoutModal = document.getElementById("logoutModal");
+const logoutPopup = document.getElementById("logoutPopup");
 const cancelLogout = document.getElementById("cancelLogout");
 const chatButton = document.getElementById("chat-button");
 const chatPanel = document.getElementById("chat-panel");
@@ -264,21 +263,21 @@ window.addEventListener("load", () => {
     }
 });
 
-// Show modal
-logoutBtn.addEventListener("click", () => {
-    logoutModal.classList.remove("hidden");
-    logoutModal.classList.add("flex");
+// Show popup
+logoutBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    logoutPopup.classList.remove("hidden");
 });
 
-// Close modal (Cancel button)
+// Hide popup (Cancel)
 cancelLogout.addEventListener("click", () => {
-    logoutModal.classList.add("hidden");
+    logoutPopup.classList.add("hidden");
 });
 
-// Close modal when clicking outside
-logoutModal.addEventListener("click", (e) => {
-    if (e.target === logoutModal) {
-        logoutModal.classList.add("hidden");
+// Hide when clicking outside
+document.addEventListener("click", (e) => {
+    if (!logoutPopup.contains(e.target) && !logoutBtn.contains(e.target)) {
+        logoutPopup.classList.add("hidden");
     }
 });
 </script>

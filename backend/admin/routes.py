@@ -753,6 +753,66 @@ def delete_student():
 
     return redirect(url_for("admin.dashboard"))
 
+@admin_bp.route("/addSuper", methods=["GET", "POST"])
+def addSuper():
+    if "admin_username" not in session:
+        return redirect(url_for("admin.login"))
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    # Fetch campuses
+    cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
+    campuses = cur.fetchall()
+
+    message = None
+    category = None
+
+    if request.method == "POST":
+        fullname = request.form.get("fullname")
+        username = request.form.get("user_name")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        campus = request.form.get("campus")
+
+        # ✅ Strong password validation
+        pattern = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$'
+        if not re.match(pattern, password):
+            message = "Password is not strong enough!"
+            category = "danger"
+            return render_template("admin/add_super.html",
+                                   campuses=campuses,
+                                   message=message,
+                                   category=category)
+
+        # Check duplicate
+        cur.execute("SELECT * FROM super_admin WHERE username=%s OR email=%s", (username, email))
+        existing = cur.fetchone()
+
+        if existing:
+            message = "Username or Email already exists!"
+            category = "danger"
+        else:
+            hashed_password = generate_password_hash(password)
+
+            cur.execute("""
+                INSERT INTO super_admin (fullname, username, email, password, campus, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (fullname, username, email, hashed_password, campus, datetime.now()))
+
+            conn.commit()
+
+            message = "Super Admin added successfully!"
+            category = "success"
+
+    cur.close()
+    conn.close()
+
+    return render_template("admin/super_admin.html",
+                           campuses=campuses,
+                           message=message,
+                           category=category)
+
 @admin_bp.route("/addAdmin", methods=["GET", "POST"])
 def addAdmin():
     if "admin_username" not in session:
@@ -885,17 +945,21 @@ def addAdmin():
 
     if is_super_admin:
         cur.execute("""
-            SELECT id, fullname, username, email, campus
+            SELECT id, fullname, username, email, campus, 'Admin' AS role
             FROM admin
-            ORDER BY campus ASC, fullname ASC
+            UNION ALL
+            SELECT id, fullname, username, email, COALESCE(campus, 'ALL') AS campus, 'Super Admin' AS role
+            FROM super_admin
+            ORDER BY role DESC, campus ASC, fullname ASC
         """)
     else:
         cur.execute("""
-            SELECT id, fullname, username, email, campus
+            SELECT id, fullname, username, email, campus, 'Admin' AS role
             FROM admin
             WHERE campus = %s
             ORDER BY fullname ASC
         """, (admin_campus,))
+
     admins = cur.fetchall()
     cur.close()
     conn.close()
@@ -942,16 +1006,26 @@ def addAdmin():
 
 @admin_bp.route("/delete-admin", methods=["POST"])
 def delete_admin():
-    if "admin_username" not in session or session["admin_username"] != "hkml":
+    if "admin_username" not in session:
         return redirect(url_for("admin.login"))
 
-    deleted_admin_id = request.form["admin_id"]
-    new_admin_id = request.form["reassign_admin_id"]
     deleter = session["admin_username"]
 
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Check if the logged-in user is a super admin
+    cur.execute("SELECT username FROM super_admin WHERE username = %s", (deleter,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        # Not a super admin → cannot delete
+        return redirect(url_for("admin.addAdmin"))
+
+    deleted_admin_id = request.form["admin_id"]
+    new_admin_id = request.form["reassign_admin_id"]
+
+    # Fetch the admin to delete
     cur.execute("""
         SELECT id, fullname, username, email, campus
         FROM admin
@@ -966,41 +1040,45 @@ def delete_admin():
 
     admin_id, fullname, username, email, campus = admin_row
 
+    # Prevent deleting self (even if super admin added in admin table)
     if username == deleter:
         cur.close()
         conn.close()
         return redirect(url_for("admin.addAdmin"))
 
-    cur.execute("""
-        SELECT username
-        FROM admin
-        WHERE id = %s
-    """, (new_admin_id,))
-    new_admin_username = cur.fetchone()[0]
+    # Get username of new admin for logs
+    cur.execute("SELECT username FROM admin WHERE id = %s", (new_admin_id,))
+    new_admin_row = cur.fetchone()
+    if not new_admin_row:
+        cur.close()
+        conn.close()
+        return redirect(url_for("admin.addAdmin"))
+    new_admin_username = new_admin_row[0]
 
+    # Reassign students
     cur.execute("""
         UPDATE student
         SET added_by = %s
         WHERE added_by = %s
     """, (new_admin_id, admin_id))
 
+    # Move deleted admin to deleted_admin table
     cur.execute("""
-        INSERT INTO deleted_admin
-        (id, fullname, username, email, campus, deleted_by)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (
-        admin_id, fullname, username, email, campus, deleter
-    ))
+        INSERT INTO deleted_admin (id, fullname, username, email, campus, deleted_by, deleted_at)
+        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+    """, (admin_id, fullname, username, email, campus, deleter))
 
+    # Delete from admin
     cur.execute("DELETE FROM admin WHERE id = %s", (admin_id,))
 
+    # Log the deletion
     cur.execute("""
-        INSERT INTO admin_logs (admin_username, campus, action)
-        VALUES (%s, %s, %s)
+        INSERT INTO admin_logs (admin_username, campus, action, created_at)
+        VALUES (%s, %s, %s, NOW())
     """, (
         deleter,
         campus,
-        f"Deleted admin: {fullname} ({username}) and reassigned students into admin {new_admin_username}"
+        f"Deleted admin: {fullname} ({username}) and reassigned students to {new_admin_username}"
     ))
 
     conn.commit()
@@ -1124,6 +1202,18 @@ def editAdmin():
     if "admin_username" not in session:
         return jsonify(success=False, message="Unauthorized")
 
+    deleter = session["admin_username"]
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Check if logged-in user is super admin
+    cur.execute("SELECT username FROM super_admin WHERE username = %s", (deleter,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify(success=False, message="Only super admins can edit admins")
+
     data = request.get_json()
     admin_id = data.get("id")
     fullname = data.get("fullname")
@@ -1132,12 +1222,12 @@ def editAdmin():
     campus = data.get("campus")
 
     if not admin_id:
+        cur.close()
+        conn.close()
         return jsonify(success=False, message="Missing admin ID")
 
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
+        # Fetch current admin info
         cur.execute("""
             SELECT fullname, username, email, campus
             FROM admin
@@ -1146,48 +1236,51 @@ def editAdmin():
         old = cur.fetchone()
 
         if not old:
+            cur.close()
+            conn.close()
             return jsonify(success=False, message="Admin not found")
 
         old_fullname, old_username, old_email, old_campus = old
 
-        changes = []
+        # Prevent editing self (optional)
+        if old_username == deleter:
+            cur.close()
+            conn.close()
+            return jsonify(success=False, message="Cannot edit your own account")
 
+        changes = []
         if fullname != old_fullname:
             changes.append(f"fullname '{old_fullname}' → '{fullname}'")
-
         if username != old_username:
             changes.append(f"username '{old_username}' → '{username}'")
-
         if email != old_email:
             changes.append(f"email '{old_email}' → '{email}'")
-
         if campus != old_campus:
             changes.append(f"campus '{old_campus}' → '{campus}'")
 
         if not changes:
+            cur.close()
+            conn.close()
             return jsonify(success=False, message="No changes detected")
 
+        # Update admin record
         cur.execute("""
             UPDATE admin
             SET fullname=%s, username=%s, email=%s, campus=%s
             WHERE id=%s
         """, (fullname, username, email, campus, admin_id))
 
-        cur.execute("""
-            SELECT campus FROM admin WHERE username = %s
-        """, (session["admin_username"],))
-        admin_campus = cur.fetchone()[0]
+        # Get deleter's campus for logging
+        cur.execute("SELECT campus FROM admin WHERE username = %s", (deleter,))
+        row = cur.fetchone()
+        admin_campus = row[0] if row else "ALL"
 
+        # Log the changes
         action = f"Edited admin '{old_username}': " + ", ".join(changes)
-
         cur.execute("""
-            INSERT INTO admin_logs (admin_username, campus, action)
-            VALUES (%s, %s, %s)
-        """, (
-            session["admin_username"],
-            admin_campus,
-            action
-        ))
+            INSERT INTO admin_logs (admin_username, campus, action, created_at)
+            VALUES (%s, %s, %s, NOW())
+        """, (deleter, admin_campus, action))
 
         conn.commit()
         cur.close()
@@ -1196,6 +1289,8 @@ def editAdmin():
         return jsonify(success=True)
 
     except psycopg2.Error as e:
+        cur.close()
+        conn.close()
         return jsonify(success=False, message=str(e))
 
 @admin_bp.route("/addProgram", methods=["POST"])

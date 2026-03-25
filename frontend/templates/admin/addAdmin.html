@@ -36,8 +36,15 @@
 <main class="ml-60 mr-2 flex-1 bg-[#f6ebcd] mt-20 rounded-md mb-20">
     <div class="bg-white p-3 shadow-md rounded-md border border-[#166D3B] ">
         <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold">ADMINISTRATOR</h1>
+        <h1 class="text-2xl font-bold">SUB ADMINISTRATOR</h1>
             <div class="flex gap-4">
+                {% if is_super_admin %}
+                <a href="{{ url_for('admin.addSuper') }}"
+                        class="bg-[#166D3B] text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm">
+                    Super Admin
+                </a>
+                {% endif %}
+
                 {% if is_super_admin %}
                 <button type="button" id="addAdminBtn" onclick="showAddForm()"
                         class="bg-[#166D3B] text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm hidden">
@@ -166,122 +173,88 @@
             </form>
         </div>
 
-        {% if is_super_admin %}
-        <div id="adminTableSection" class="hidden mt-6 border border-[#166D3B]">
-            <table class="w-full border border-[#166D3B] rounded-md text-sm">
-                <thead class="bg-[#166D3B] text-white">
-                    <tr>
-                        <th class="px-4 py-2">Full Name</th>
-                        <th class="px-4 py-2">Email</th>
-                        <th class="px-4 py-2">Campus</th>
-                        <th class="px-4 py-2 text-center">Logs</th>
-                        <th class="px-4 py-2 text-center">Actions</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for admin in admins %}
-                    <tr class="hover:bg-gray-100">
-                        <td class="px-4 py-2 border">
-                            <div class="hover-scroll" title="{{ admin.fullname }}">
-                                <span>{{ admin.fullname|upper }}</span>
-                            </div>
-                        </td>
-                        <td class="px-4 py-2 border">{{ admin.email }}</td>
-                        <td class="px-4 py-2 border">
-                            <div class="hover-scroll" title="{{ admin.campus }}">
-                                <span>{{ admin.campus|upper }}</span>
-                            </div>
-                        </td>
-                        <td class="px-4 py-2 border text-center">
-                            <button
-                                class="text-gray-600 hover:text-black view-logs-btn"
-                                data-username="{{ admin.username }}"
-                                title="View Logs">
-                                <svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    class="w-5 h-5 mx-auto">
-                                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
-                                    <path fill-rule="evenodd"
-                                        d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z"
-                                        clip-rule="evenodd"/>
-                                </svg>
-                            </button>
-                        </td>
-                        <td class="px-4 py-2 border text-center">
-                            <div class="flex justify-center gap-4">
-
-                                <!-- ✏️ Edit -->
-                                <button
-                                    type="button"
-                                    class="text-[#166D3B] hover:text-black edit-admin-btn"
-                                    title="Edit Admin"
-                                    data-id="{{ admin.id }}"
-                                    data-fullname="{{ admin.fullname }}"
-                                    data-username="{{ admin.username }}"
-                                    data-email="{{ admin.email }}"
-                                    data-campus="{{ admin.campus }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                        class="w-5 h-5">
-                                        <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712Z"/>
-                                        <path d="M19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z"/>
-                                        <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z"/>
-                                    </svg>
-                                </button>
-
-                                <!-- 🗑 Delete -->
-                                <button
-                                    type="button"
-                                    class="text-red-600 hover:text-black"
-                                    title="Delete Admin"
-                                    onclick="openDeleteModal('{{ admin.id }}')">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                    <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-{% if deleted_admins %}
-<div class="mt-10 border border-red-500 hidden">
-    <h3 class="bg-red-600 text-white px-4 py-2 font-semibold">
-        Deleted Admins
-    </h3>
-
-    <table class="w-full text-sm border">
-        <thead class="bg-red-100">
+{% if is_super_admin %}
+<div id="adminTableSection" class="hidden mt-6 border border-[#166D3B]">
+    <table class="w-full border border-[#166D3B] rounded-md text-sm">
+        <thead class="bg-[#166D3B] text-white">
             <tr>
-                <th class="px-3 py-2">Full Name</th>
-                <th class="px-3 py-2">Username</th>
-                <th class="px-3 py-2">Email</th>
-                <th class="px-3 py-2">Campus</th>
-                <th class="px-3 py-2">Deleted By</th>
-                <th class="px-3 py-2">Deleted At</th>
+                <th class="px-4 py-2">Full Name</th>
+                <th class="px-4 py-2">Email</th>
+                <th class="px-4 py-2">Campus</th>
+                <th class="px-4 py-2">Role</th> <!-- NEW -->
+                <th class="px-4 py-2 text-center">Logs</th>
+                <th class="px-4 py-2 text-center">Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for d in deleted_admins %}
+            {% for admin in admins %}
             <tr class="hover:bg-gray-100">
-                <td class="border px-3 py-2">{{ d[1] }}</td>
-                <td class="border px-3 py-2">{{ d[2] }}</td>
-                <td class="border px-3 py-2">{{ d[3] }}</td>
-                <td class="border px-3 py-2">{{ d[4] }}</td>
-                <td class="border px-3 py-2">{{ d[5] }}</td>
-                <td class="border px-3 py-2">{{ d[6] }}</td>
+                <td class="px-4 py-2 border">
+                    <div class="hover-scroll" title="{{ admin.fullname }}">
+                        <span>{{ admin.fullname|upper }}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-2 border">{{ admin.email }}</td>
+                <td class="px-4 py-2 border">
+                    <div class="hover-scroll" title="{{ admin.campus }}">
+                        <span>{{ admin.campus|upper }}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-2 border text-center">
+                    <span class="font-semibold">{{ admin.role }}</span> <!-- NEW -->
+                </td>
+                <td class="px-4 py-2 border text-center">
+                    <button class="text-gray-600 hover:text-black view-logs-btn"
+                        data-username="{{ admin.username }}" title="View Logs">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            class="w-5 h-5 mx-auto">
+                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+                            <path fill-rule="evenodd"
+                                d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z"
+                                clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </td>
+                <td class="px-4 py-2 border text-center">
+                    <div class="flex justify-center gap-4">
+                        {% if admin.role != 'Super Admin' %}
+                        <!-- Edit & Delete only for sub-admins -->
+                        <button type="button"
+                            class="text-[#166D3B] hover:text-black edit-admin-btn"
+                            title="Edit Admin"
+                            data-id="{{ admin.id }}"
+                            data-fullname="{{ admin.fullname }}"
+                            data-username="{{ admin.username }}"
+                            data-email="{{ admin.email }}"
+                            data-campus="{{ admin.campus }}">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                class="w-5 h-5">
+                                <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712Z"/>
+                                <path d="M19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z"/>
+                                <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z"/>
+                            </svg>
+                        </button>
+                        <button type="button"
+                                class="text-red-600 hover:text-black"
+                                title="Delete Admin"
+                                onclick="openDeleteModal('{{ admin.id }}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        {% else %}
+                        <span class="text-gray-500 italic">N/A</span>
+                        {% endif %}
+                    </div>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-</div>
-{% endif %}
 
         </div>
         {% endif %}
@@ -290,7 +263,7 @@
 </div>
 
 <div id="logsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-    <div class="overflow-x-auto max-h-[60vh] bg-white p-4 rounded-md">
+    <div class="overflow-x-auto max-h-[60vh] w-[700px] bg-white p-4 rounded-md">
         <div class="flex justify-between items-center">
             <div>
                 <h2 class="text-xl font-bold">Admin Logs</h2>
@@ -622,16 +595,27 @@ document.querySelectorAll(".view-logs-btn").forEach(btn => {
 function openDeleteModal(adminId) {
     document.getElementById("deleteAdminId").value = adminId;
     const select = document.getElementById("reassignSelect");
-    const options = select.querySelectorAll("option");
 
-    options.forEach(option => {
-        option.hidden = option.dataset.adminId === adminId;
+    // Restore previously hidden options
+    Array.from(select.options).forEach(opt => {
+        if (opt.dataset.originalHidden === "true") {
+            opt.hidden = false;
+            opt.dataset.originalHidden = "";
+        }
     });
 
-    // Auto-select first visible
-    for (let option of options) {
-        if (!option.hidden) {
-            option.selected = true;
+    // Hide the admin being deleted
+    Array.from(select.options).forEach(opt => {
+        if (opt.dataset.adminId === adminId) {
+            opt.hidden = true;
+            opt.dataset.originalHidden = "true"; // mark as temporarily hidden
+        }
+    });
+
+    // Auto-select first visible admin
+    for (let opt of select.options) {
+        if (!opt.hidden) {
+            opt.selected = true;
             break;
         }
     }
