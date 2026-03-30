@@ -129,9 +129,14 @@
             color: red;
         }
 
-        /* SIGNATORY */
         .signatory {
             margin-top: 50px;
+        }
+
+        /* wrapper to control alignment */
+        .signatory .wrapper {
+            display: inline-block;   /* shrink to content width */
+            text-align: center;      /* center title under name */
         }
 
         .signatory .name {
@@ -144,9 +149,9 @@
 
         .signatory .title {
             font-size: 11px;
-            margin-left: 30px;
             margin-top: 3px;
             margin-bottom: 5px;
+            margin-left: 0; /* remove left push */
         }
 
         /* RESERVED SPACE */
@@ -352,8 +357,10 @@
 
     <!-- SIGNATORY -->
     <div class="signatory">
-        <div class="name">{{ guidance_counselor }}</div>
-        <div class="title">Guidance Counselor</div>
+        <div class="wrapper">
+            <div class="name">{{ guidance_counselor }}</div>
+            <div class="title">Guidance Counselor</div>
+        </div>
     </div>
 
 </div>

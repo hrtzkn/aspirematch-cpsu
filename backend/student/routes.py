@@ -604,6 +604,353 @@ def verify():
 
     return render_template("student/verify.html", error=error, success=success)
 
+interestPairs = [
+  [
+    { "number": 1, "key": "A", "text": "Operate a printing press" },
+    { "number": 1, "key": "B", "text": "Study the causes of earthquakes" }
+  ],
+  [
+    { "number": 2, "key": "C", "text": "Plant and harvest crops" },
+    { "number": 2, "key": "R", "text": "Replaces a car window and fender" }
+  ],
+  [
+    { "number": 3, "key": "E", "text": "Analyze reports and records" },
+    { "number": 3, "key": "F", "text": "Operate a machine" }
+  ],
+  [
+    { "number": 4, "key": "G", "text": "Work in an office" },
+    { "number": 4, "key": "H", "text": "Answer costumer questions" }
+  ],
+  [
+    { "number": 5, "key": "D", "text": "Write reports" },
+    { "number": 5, "key": "J", "text": "Helps former prison inmates find work" }
+  ],
+  [
+    { "number": 6, "key": "L", "text": "Design a freeway" },
+    { "number": 6, "key": "M", "text": "Plan educational lessons" }
+  ],
+  [
+    { "number": 7, "key": "N", "text": "balance a checkbook" },
+    { "number": 7, "key": "O", "text": "Take an x -ray" }
+  ],
+  [
+    { "number": 8, "key": "P", "text": "Write a computer program" },
+    { "number": 8, "key": "Q", "text": "Train animals" }
+  ],
+  [
+    { "number": 9, "key": "C", "text": "Be in charge of replanting forest" },
+    { "number": 9, "key": "A", "text": "Acts in TV show or movies" }
+  ],
+  [
+    { "number": 10, "key": "D", "text": "Solve a burglary" },
+    { "number": 10, "key": "F", "text": "Checks product quality" }
+  ],
+  [
+    { "number": 11, "key": "E", "text": "Build an airport" },
+    { "number": 11, "key": "G", "text": "keep company business records" }
+  ],
+  [
+    { "number": 12, "key": "F", "text": "Put together small tools" },
+    { "number": 12, "key": "P", "text": "Design a website" }
+  ],
+  [
+    { "number": 13, "key": "M", "text": "Tutor students" },
+    { "number": 13, "key": "Q", "text": "Works at zoo" }
+  ],
+  [
+    { "number": 14, "key": "J", "text": "Take care of children" },
+    { "number": 14, "key": "O", "text": "Plan special diets" }
+  ],
+  [
+    { "number": 15, "key": "A", "text": "Choreograph a dance" },
+    { "number": 15, "key": "K", "text": "Lobby or show support for a cause" }
+  ],
+  [
+    { "number": 16, "key": "H", "text": "Sell cloths" },
+    { "number": 16, "key": "E", "text": "Work with your hands" }
+  ],
+  [
+    { "number": 17, "key": "I", "text": "Work at an amusement park" },
+    { "number": 17, "key": "N", "text": "Sell insurance" }
+  ],
+  [
+    { "number": 18, "key": "I", "text": "Learn about ethnic groups" },
+    { "number": 18, "key": "P", "text": "Manage an information system" }
+  ],
+  [
+    { "number": 19, "key": "N", "text": "Appraise the value of a house" },
+    { "number": 19, "key": "M", "text": "File books at the library" }
+  ],
+  [
+    { "number": 20, "key": "M", "text": "Grade papers" },
+    { "number": 20, "key": "R", "text": "Operate a train" }
+  ],
+  [
+    { "number": 21, "key": "L", "text": "Order building supplies" },
+    { "number": 21, "key": "E", "text": "Paint motors" }
+  ],
+  [
+    { "number": 22, "key": "P", "text": "Develop new computer games" },
+    { "number": 22, "key": "H", "text": "Buy merchandise for a store" }
+  ],
+  [
+    { "number": 23, "key": "K", "text": "Work to get someone elected" },
+    { "number": 23, "key": "C", "text": "Identify plants in a forest" }
+  ],
+  [
+    { "number": 24, "key": "D", "text": "Guard inmates in a prison" },
+    { "number": 24, "key": "L", "text": "Read blueprints" }
+  ],
+  [
+    { "number": 25, "key": "H", "text": "Line up concerts for a band" },
+    { "number": 25, "key": "K", "text": "Ask people survey questions" }
+  ],
+  [
+    { "number": 26, "key": "E", "text": "Manage a factory" },
+    { "number": 26, "key": "O", "text": "Work as a nurse in a hospital" }
+  ],
+  [
+    { "number": 27, "key": "A", "text": "Paint a portrait" },
+    { "number": 27, "key": "K", "text": "Testify before Congress" }
+  ],
+  [
+    { "number": 28, "key": "B", "text": "Work with a microscope" },
+    { "number": 28, "key": "I", "text": "Schedule tee times at a golf course" }
+  ],
+  [
+    { "number": 29, "key": "C", "text": "Classify plants" },
+    { "number": 29, "key": "O", "text": "Transcribe medical records" }
+  ],
+  [
+    { "number": 30, "key": "E", "text": "Make three-dimensional items" },
+    { "number": 30, "key": "D", "text": "Analyze handwriting" }
+  ],
+  [
+    { "number": 31, "key": "B", "text": "Design indoor sprinkler systems" },
+    { "number": 31, "key": "F", "text": "Run a factory sewing machine" }
+  ],
+  [
+    { "number": 32, "key": "G", "text": "Develop personnel policies" },
+    { "number": 32, "key": "Q", "text": "Train racehorses" }
+  ],
+  [
+    { "number": 33, "key": "D", "text": "Guard an office building" },
+    { "number": 33, "key": "H", "text": "Run a department store" }
+  ],
+  [
+    { "number": 34, "key": "A", "text": "Write for a newspaper" },
+    { "number": 34, "key": "G", "text": "Use a calculator" }
+  ],
+  [
+    { "number": 35, "key": "O", "text": "Help people at a mental health clinic" },
+    { "number": 35, "key": "L", "text": "Remodel old houses" }
+  ],
+  [
+    { "number": 36, "key": "M", "text": "Care for young children" },
+    { "number": 36, "key": "D", "text": "Locate a missing person" }
+  ],
+  [
+    { "number": 37, "key": "N", "text": "Plan estate disbursements/payments" },
+    { "number": 37, "key": "P", "text": "Enter data" }
+  ],
+  [
+    { "number": 38, "key": "A", "text": "Design a book cover" },
+    { "number": 38, "key": "E", "text": "Build toys with written instructions" }
+  ],
+  [
+    { "number": 39, "key": "B", "text": "Figure out why someone is sick" },
+    { "number": 39, "key": "R", "text": "Fly an airplane" }
+  ],
+  [
+    { "number": 40, "key": "C", "text": "Learn how things grow and stay alive" },
+    { "number": 40, "key": "H", "text": "Sell cars" }
+  ],
+  [
+    { "number": 41, "key": "I", "text": "Work as a restaurant host or hostess" },
+    { "number": 41, "key": "D", "text": "Fight fires" }
+  ],
+  [
+    { "number": 42, "key": "G", "text": "Keep payroll records for a company" },
+    { "number": 42, "key": "J", "text": "Work in a nursing home" }
+  ],
+  [
+    { "number": 43, "key": "G", "text": "Hire new staff" },
+    { "number": 43, "key": "O", "text": "Run ventilators/breathing machines" }
+  ],
+  [
+    { "number": 44, "key": "R", "text": "Drive a taxi" },
+    { "number": 44, "key": "A", "text": "Broadcast the news" }
+  ],
+  [
+    { "number": 45, "key": "K", "text": "Audit taxes for the government" },
+    { "number": 45, "key": "B", "text": "Sort and date dinosaur bones" }
+  ],
+  [
+    { "number": 46, "key": "O", "text": "Give shots" },
+    { "number": 46, "key": "C", "text": "Design landscaping" }
+  ],
+  [
+    { "number": 47, "key": "P", "text": "Give tech support to computer users" },
+    { "number": 47, "key": "D", "text": "Work in a courtroom" }
+  ],
+  [
+    { "number": 48, "key": "Q", "text": "Care for injured animals" },
+    { "number": 48, "key": "I", "text": "Serve meals to customers" }
+  ],
+  [
+    { "number": 49, "key": "F", "text": "Install rivets" },
+    { "number": 49, "key": "Q", "text": "Raise worms" }
+  ],
+  [
+    { "number": 50, "key": "N", "text": "Balance accounts" },
+    { "number": 50, "key": "M", "text": "Develop learning games" }
+  ],
+  [
+    { "number": 51, "key": "J", "text": "Read to sick people" },
+    { "number": 51, "key": "P", "text": "Repair computers" }
+  ],
+  [
+    { "number": 52, "key": "F", "text": "Compare sizes and shapes of objects" },
+    { "number": 52, "key": "Q", "text": "Fish" }
+  ],
+  [
+    { "number": 53, "key": "R", "text": "Repair bicycles" },
+    { "number": 53, "key": "K", "text": "Deliver mail" }
+  ],
+  [
+    { "number": 54, "key": "M", "text": "Teach Special Education" },
+    { "number": 54, "key": "P", "text": "Set up a tracking system" }
+  ],
+  [
+    { "number": 55, "key": "G", "text": "Manage a store" },
+    { "number": 55, "key": "H", "text": "Advertise goods and services" }
+  ],
+  [
+    { "number": 56, "key": "R", "text": "Distribute supplies to dentists" },
+    { "number": 56, "key": "I", "text": "Compete in a sports event" }
+  ],
+  [
+    { "number": 57, "key": "I", "text": "Check guests into a hotel" },
+    { "number": 57, "key": "M", "text": "Teach adults to read" }
+  ],
+  [
+    { "number": 58, "key": "L", "text": "Follow step-by-step instructions" },
+    { "number": 58, "key": "N", "text": "Collect past due bills" }
+  ],
+  [
+    { "number": 59, "key": "L", "text": "Build kitchen cabinets" },
+    { "number": 59, "key": "N", "text": "Refinance a mortgage" }
+  ],
+  [
+    { "number": 60, "key": "A", "text": "Sing in a concert" },
+    { "number": 60, "key": "R", "text": "Direct the takeoff/landing of planes" }
+  ],
+  [
+    { "number": 61, "key": "G", "text": "Operate a cash register" },
+    { "number": 61, "key": "B", "text": "Collect rocks" }
+  ],
+  [
+    { "number": 62, "key": "G", "text": "Start a business" },
+    { "number": 62, "key": "L", "text": "Draft a blueprint" }
+  ],
+  [
+    { "number": 63, "key": "M", "text": "Assess student progress" },
+    { "number": 63, "key": "L", "text": "Design an airplane" }
+  ],
+  [
+    { "number": 64, "key": "O", "text": "Wrap a sprained ankle" },
+    { "number": 64, "key": "I", "text": "Guide an international tour group" }
+  ],
+  [
+    { "number": 65, "key": "P", "text": "Solve technical problems" },
+    { "number": 65, "key": "J", "text": "Provide spiritual guidance to others" }
+  ],
+  [
+    { "number": 66, "key": "Q", "text": "Manage a veterinary clinic" },
+    { "number": 66, "key": "K", "text": "Lead others" }
+  ],
+  [
+    { "number": 67, "key": "E", "text": "Operate heavy equipment" },
+    { "number": 67, "key": "Q", "text": "Manage a fish hatchery" }
+  ],
+  [
+    { "number": 68, "key": "F", "text": "Assemble cars" },
+    { "number": 68, "key": "K", "text": "Protect our borders" }
+  ],
+  [
+    { "number": 69, "key": "A", "text": "Play an instrument" },
+    { "number": 69, "key": "J", "text": "Plan activities for adult day care" }
+  ],
+  [
+    { "number": 70, "key": "C", "text": "Research soybean use in paint" },
+    { "number": 70, "key": "J", "text": "Provide consumer information" }
+  ],
+  [
+    { "number": 71, "key": "D", "text": "Guard money in an armored car" },
+    { "number": 71, "key": "B", "text": "Study human behavior" }
+  ],
+  [
+    { "number": 72, "key": "E", "text": "Fix a television set" },
+    { "number": 72, "key": "M", "text": "Run a school" }
+  ],
+  [
+    { "number": 73, "key": "F", "text": "Fix a control panel" },
+    { "number": 73, "key": "J", "text": "Help friends with personal problems" }
+  ],
+  [
+    { "number": 74, "key": "C", "text": "Oversee a logging crew" },
+    { "number": 74, "key": "B", "text": "Study weather conditions" }
+  ],
+  [
+    { "number": 75, "key": "R", "text": "Pack boxes at a warehouse" },
+    { "number": 75, "key": "A", "text": "Teach dancing" }
+  ],
+  [
+    { "number": 76, "key": "O", "text": "Sterilize surgical instruments" },
+    { "number": 76, "key": "B", "text": "Study soil conditions" }
+  ],
+  [
+    { "number": 77, "key": "N", "text": "Play the stock market" },
+    { "number": 77, "key": "C", "text": "Protect the environment" }
+  ],
+  [
+    { "number": 78, "key": "R", "text": "Inspect cargo containers" },
+    { "number": 78, "key": "F", "text": "Work in a cannery" }
+  ],
+  [
+    { "number": 79, "key": "I", "text": "Coach a school sports team" },
+    { "number": 79, "key": "P", "text": "Update a website" }
+  ],
+  [
+    { "number": 80, "key": "Q", "text": "Hunt" },
+    { "number": 80, "key": "K", "text": "Enlist in a branch of the military" }
+  ],
+  [
+    { "number": 81, "key": "H", "text": "Sell sporting goods" },
+    { "number": 81, "key": "J", "text": "Cut and style hair" }
+  ],
+  [
+    { "number": 82, "key": "B", "text": "Experiment to find new metals" },
+    { "number": 82, "key": "N", "text": "Work in a bank" }
+  ],
+  [
+    { "number": 83, "key": "G", "text": "Work with computer programs" },
+    { "number": 83, "key": "N", "text": "Loan money" }
+  ],
+  [
+    { "number": 84, "key": "L", "text": "Hang wallpaper" },
+    { "number": 84, "key": "D", "text": "Make an arrest" }
+  ],
+  [
+    { "number": 85, "key": "O", "text": "Deliver babies" },
+    { "number": 85, "key": "H", "text": "Persuade people to buy something" }
+  ],
+  [
+    { "number": 86, "key": "H", "text": "Stock shelves" },
+    { "number": 86, "key": "I", "text": "Serve concession stand drinks" }
+  ]
+]
+
 @student_bp.route("/chatbot", methods=["POST"])
 def chatbot():
     user_msg = request.json.get("message", "").strip()
@@ -1435,7 +1782,7 @@ def surveyResult():
     survey_result_unlocked, inventory_result_unlocked = cur.fetchone()
 
     cur.execute("""
-        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+        SELECT s.exam_id, s.fullname, s.school_year, s.campus, s.photo,
                c.campus_name, c.campus_address, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
@@ -1466,11 +1813,7 @@ def surveyResult():
     
     row = cur.fetchone()
 
-    created_at = row[2]
-
-    start_year = created_at.year
-    end_year = start_year + 1
-    year = f"{start_year}-{end_year}"
+    year = row[2] if row[2] else "N/A"
 
     if not row:
         return "No survey results found."
@@ -1478,7 +1821,7 @@ def surveyResult():
     student_results = {
         "exam_id": row[0],
         "fullname": row[1],
-        "created_at": row[2],
+        "school_year": row[2],
         "campus": row[3],
         "photo": row[4],
         "campus_name": row[5],
@@ -1518,12 +1861,15 @@ def surveyResult():
         values = [f"%{letter}%" for letter in top_letters]
 
         query = f"""
-            SELECT program_name, category_letter
+            SELECT DISTINCT ON (program_name) program_name, category_letter
             FROM program
-            WHERE {conditions}
+            WHERE ({conditions})
+            AND TRIM(LOWER(campus)) = TRIM(LOWER(%s))
             ORDER BY program_name
             LIMIT 5
         """
+
+        values.append(student_results["campus"])
         cur.execute(query, values)
         predicted_programs = cur.fetchall()
 
@@ -1602,7 +1948,7 @@ def download_pdf(student_id):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+        SELECT s.exam_id, s.fullname, s.school_year, s.campus, s.photo,
                c.campus_name, c.campus_address, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
@@ -1638,16 +1984,12 @@ def download_pdf(student_id):
         conn.close()
         return "Survey results not found", 404
 
-    created_at = row[2]
-
-    start_year = created_at.year
-    end_year = start_year + 1
-    year = f"{start_year}-{end_year}"
+    year = row[2] if row[2] else "N/A"
 
     student_data = {
         "exam_id": row[0],
         "fullname": row[1],
-        "created_at": row[2],
+        "school_year": row[2],
         "campus": row[3],
         "photo": row[4],
         "campus_name": row[5],
@@ -1746,9 +2088,6 @@ def studentInventory():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT program_name FROM program ORDER BY program_name")
-    programs = [row[0] for row in cur.fetchall()]
-
     cur.execute("""
         SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo, 
                sa.preferred_program, sa.ai_explanation,
@@ -1793,6 +2132,15 @@ def studentInventory():
         "created_at": row[2],
         "campus": row[3],
     }
+
+    cur.execute("""
+        SELECT program_name 
+        FROM program 
+        WHERE campus = %s
+        ORDER BY program_name
+    """, (student_results["campus"],))
+    
+    programs = [row[0] for row in cur.fetchall()]
 
     cur.close()
     conn.close()

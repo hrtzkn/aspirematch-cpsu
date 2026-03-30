@@ -279,6 +279,8 @@ def login():
         if user and check_password_hash(user["password"], password):
             session.clear()
             session["admin_username"] = username
+            session["admin_role"] = user_type
+            session["campus"] = campus
             session["last_activity"] = datetime.now(timezone.utc)
             session.permanent = True
             session["admin_login_attempts"] = 0
@@ -327,25 +329,30 @@ def forgot_password():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        cur.execute("SELECT id FROM super_admin WHERE email = %s", (email,))
-        admin = cur.fetchone()
-        is_super_admin = bool(admin)
+        user = None
+        role = None
 
-        if not admin:
+        cur.execute("SELECT id FROM super_admin WHERE email = %s", (email,))
+        user = cur.fetchone()
+        if user:
+            role = "super_admin"
+        else:
             cur.execute("SELECT id FROM admin WHERE email = %s", (email,))
-            admin = cur.fetchone()
+            user = cur.fetchone()
+            if user:
+                role = "admin"
 
         cur.close()
         conn.close()
 
-        if not admin:
+        if not user:
             error = "No admin account found with this email."
         else:
             otp = generate_otp()
             session["admin_otp"] = otp
             session["admin_otp_email"] = email
             session["admin_otp_time"] = time.time()
-            session["is_super_admin"] = is_super_admin
+            session["admin_role"] = role
 
             if send_otp_email(email, otp):
                 return redirect(url_for("admin.verify_reset_otp"))
@@ -359,7 +366,7 @@ def forgot_password():
 def verify_reset_otp():
     error = success = remaining = None
     email = session.get("admin_otp_email")
-    is_super_admin = session.get("is_super_admin", False)
+    role = session.get("admin_role")
 
     if not email:
         return redirect(url_for("admin.forgot_password"))
@@ -367,7 +374,7 @@ def verify_reset_otp():
     # fetch admin details
     conn = get_db_connection()
     cur = conn.cursor()
-    table = "super_admin" if is_super_admin else "admin"
+    table = "super_admin" if role == "super_admin" else "admin"
     cur.execute(f"SELECT fullname, campus FROM {table} WHERE email = %s", (email,))
     admin_row = cur.fetchone()
     cur.close()
@@ -428,7 +435,7 @@ def reset_password():
     if not email:
         return redirect(url_for("admin.login"))
 
-    is_super_admin = session.get("is_super_admin", False)
+    role = session.get("admin_role")
 
     if request.method == "POST":
         password = request.form.get("password")
@@ -440,7 +447,7 @@ def reset_password():
             hashed = generate_password_hash(password)
             conn = get_db_connection()
             cur = conn.cursor()
-            table = "super_admin" if is_super_admin else "admin"
+            table = "super_admin" if role == "super_admin" else "admin"
             cur.execute(f"UPDATE {table} SET password = %s WHERE email = %s", (hashed, email))
             conn.commit()
             cur.close()
@@ -463,26 +470,21 @@ def dashboard():
     conn = get_db_connection()
     cur = conn.cursor()
 
+    role = session.get("admin_role")
+    table = "super_admin" if role == "super_admin" else "admin"
+
     cur.execute(
-        "SELECT fullname, campus FROM admin WHERE username = %s;",
+        f"SELECT fullname, campus FROM {table} WHERE username = %s;",
         (session["admin_username"],)
     )
     admin_row = cur.fetchone()
-    
-    if admin_row:
-        fullname, admin_campus = admin_row
-    else:
-        cur.execute(
-            "SELECT fullname, campus FROM super_admin WHERE username = %s;",
-            (session["admin_username"],)
-        )
-        admin_row = cur.fetchone()
-        if admin_row:
-            fullname, admin_campus = admin_row
-        else:
-            cur.close()
-            conn.close()
-            return redirect(url_for("admin.login"))
+
+    if not admin_row:
+        cur.close()
+        conn.close()
+        return redirect(url_for("admin.login"))
+
+    fullname, admin_campus = admin_row
         
     cur.execute("""
         SELECT campus_name, campus_address 
@@ -499,13 +501,21 @@ def dashboard():
         campus_name = admin_campus
         campus_address = ""
 
-    cur.execute(
-        "SELECT 1 FROM super_admin WHERE username = %s;",
-        (session["admin_username"],)
-    )
-    is_super_admin = bool(cur.fetchone())
+    role = session.get("admin_role")
+    is_super_admin = role == "super_admin"
 
-    selected_year = request.args.get("year", type=int) or datetime.now().year
+    cur.execute("""
+        SELECT DISTINCT school_year
+        FROM student
+        WHERE school_year IS NOT NULL
+        ORDER BY school_year DESC;
+    """)
+    available_years = [row[0] for row in cur.fetchall()]
+
+    selected_year = request.args.get("year")
+    if not selected_year:
+        selected_year = available_years[0] if available_years else None
+
     search_query = request.args.get("q", "").strip()
 
     if is_super_admin:
@@ -519,16 +529,17 @@ def dashboard():
         campuses = [admin_campus]
 
     cur.execute("""
-        SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
+        SELECT DISTINCT school_year
         FROM student
-        ORDER BY 1 DESC;
+        WHERE school_year IS NOT NULL
+        ORDER BY school_year DESC;
     """)
     available_years = [row[0] for row in cur.fetchall()]
 
     student_query = """
         SELECT id, exam_id, fullname, gender, email, campus
         FROM student
-        WHERE EXTRACT(YEAR FROM created_at) = %s
+        WHERE school_year = %s
     """
     params = [selected_year]
 
@@ -547,7 +558,7 @@ def dashboard():
     total_query = """
         SELECT COUNT(*)
         FROM student
-        WHERE EXTRACT(YEAR FROM created_at) = %s
+        WHERE school_year = %s
     """
     params = [selected_year]
 
@@ -563,7 +574,7 @@ def dashboard():
         FROM student s
         LEFT JOIN student_survey_answer a
             ON a.student_id = s.id OR a.exam_id = s.exam_id
-        WHERE EXTRACT(YEAR FROM s.created_at) = %s
+        WHERE school_year = %s
         AND (a.preferred_program IS NULL OR a.preferred_program = '')
     """
     params = [selected_year]
@@ -638,6 +649,7 @@ def edit_student():
         return redirect(url_for("admin.login"))
 
     admin_username = session["admin_username"]
+    role = session.get("admin_role")
 
     student_id = request.form["student_id"]
     new_fullname = request.form["fullname"]
@@ -647,19 +659,36 @@ def edit_student():
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # ✅ Get admin campus based on role
+    table = "super_admin" if role == "super_admin" else "admin"
     cur.execute(
-        "SELECT campus FROM admin WHERE username = %s;",
+        f"SELECT campus FROM {table} WHERE username = %s;",
         (admin_username,)
     )
     admin_campus = cur.fetchone()[0]
 
+    # ✅ Get student info (including campus)
     cur.execute("""
-        SELECT fullname, gender, email
+        SELECT fullname, gender, email, campus
         FROM student
         WHERE id = %s;
     """, (student_id,))
-    old_fullname, old_gender, old_email = cur.fetchone()
+    student = cur.fetchone()
 
+    if not student:
+        cur.close()
+        conn.close()
+        return redirect(url_for("admin.dashboard"))
+
+    old_fullname, old_gender, old_email, student_campus = student
+
+    # ✅ Restrict sub-admin
+    if role != "super_admin" and student_campus != admin_campus:
+        cur.close()
+        conn.close()
+        return "Unauthorized", 403
+
+    # ✅ Update student
     cur.execute("""
         UPDATE student
         SET fullname = %s,
@@ -668,35 +697,27 @@ def edit_student():
         WHERE id = %s;
     """, (new_fullname, new_gender, new_email, student_id))
 
+    # ✅ Logs
     if old_fullname != new_fullname:
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s);
-        """, (
-            admin_username,
-            admin_campus,
-            f"Edited student: {old_fullname} into {new_fullname}"
-        ))
+        """, (admin_username, admin_campus,
+              f"Edited student name: {old_fullname} → {new_fullname}"))
 
     if old_gender != new_gender:
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s);
-        """, (
-            admin_username,
-            admin_campus,
-            f"Edited student: {old_gender} into {new_gender}"
-        ))
+        """, (admin_username, admin_campus,
+              f"Edited student gender: {old_gender} → {new_gender}"))
 
     if old_email != new_email:
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s);
-        """, (
-            admin_username,
-            admin_campus,
-            f"Edited student: {old_email} into {new_email}"
-        ))
+        """, (admin_username, admin_campus,
+              f"Edited student email: {old_email} → {new_email}"))
 
     conn.commit()
     cur.close()
@@ -710,34 +731,49 @@ def delete_student():
         return redirect(url_for("admin.login"))
 
     admin_username = session["admin_username"]
+    role = session.get("admin_role")
+
     student_id = request.form["student_id"]
 
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # ✅ Get admin campus
+    table = "super_admin" if role == "super_admin" else "admin"
     cur.execute(
-        "SELECT campus FROM admin WHERE username = %s;",
+        f"SELECT campus FROM {table} WHERE username = %s;",
         (admin_username,)
     )
     admin_campus = cur.fetchone()[0]
 
-    cur.execute(
-        "SELECT fullname FROM student WHERE id = %s;",
-        (student_id,)
-    )
-    student_row = cur.fetchone()
-    if not student_row:
+    # ✅ Get student info
+    cur.execute("""
+        SELECT fullname, campus
+        FROM student
+        WHERE id = %s;
+    """, (student_id,))
+    student = cur.fetchone()
+
+    if not student:
         cur.close()
         conn.close()
         return redirect(url_for("admin.dashboard"))
 
-    student_fullname = student_row[0]
+    student_fullname, student_campus = student
 
+    # ✅ Restrict sub-admin
+    if role != "super_admin" and student_campus != admin_campus:
+        cur.close()
+        conn.close()
+        return "Unauthorized", 403
+
+    # ✅ Delete
     cur.execute(
         "DELETE FROM student WHERE id = %s;",
         (student_id,)
     )
 
+    # ✅ Log
     cur.execute("""
         INSERT INTO admin_logs (admin_username, campus, action)
         VALUES (%s, %s, %s);
@@ -775,7 +811,6 @@ def addSuper():
         password = request.form.get("password")
         campus = request.form.get("campus")
 
-        # ✅ Strong password validation
         pattern = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$'
         if not re.match(pattern, password):
             message = "Password is not strong enough!"
@@ -821,63 +856,40 @@ def addAdmin():
     message = None
     category = None
     admin_username = session["admin_username"]
+    role = session.get("admin_role", "admin")  # "super_admin" or "admin"
+    is_super_admin = role == "super_admin"
 
+    # Determine admin campus
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    cur.execute("SELECT campus FROM admin WHERE username = %s", (admin_username,))
+    table = "super_admin" if is_super_admin else "admin"
+    cur.execute(f"SELECT campus, fullname FROM {table} WHERE username = %s", (admin_username,))
     admin_row = cur.fetchone()
-    if admin_row:
-        admin_campus = admin_row["campus"]
-        is_super_admin = False
-    else:
-        cur.execute("SELECT fullname, campus FROM super_admin WHERE username = %s", (admin_username,))
-        admin_row = cur.fetchone()
-        if admin_row:
-            admin_campus = admin_row.get("campus") or "ALL"
-            is_super_admin = True
-        else:
-            cur.close()
-            conn.close()
-            return redirect(url_for("admin.login"))
+    if not admin_row:
+        cur.close()
+        conn.close()
+        return redirect(url_for("admin.login"))
 
+    admin_campus = admin_row.get("campus") or "ALL"
+    admin_fullname = admin_row["fullname"]
+
+    # Get campus info
     cur.execute("""
         SELECT campus_name, campus_address 
         FROM campus 
         WHERE campus_name = %s
     """, (admin_campus,))
-
     campus_data = cur.fetchone()
+    campus_name = campus_data["campus_name"] if campus_data else admin_campus
+    campus_address = campus_data["campus_address"] if campus_data else ""
 
-    if campus_data:
-        campus_name = campus_data["campus_name"]
-        campus_address = campus_data["campus_address"]
-    else:
-        campus_name = admin_campus
-        campus_address = ""
-
-    cur.close()
-    conn.close()
-
-    # Fetch campuses from campus table
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-
+    # Fetch campuses for dropdown
     if is_super_admin:
-        cur.execute("""
-            SELECT campus_name 
-            FROM campus 
-            ORDER BY campus_name ASC
-        """)
-        campuses = cur.fetchall()
+        cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
     else:
-        # Sub admin → only their campus
-        cur.execute("""
-            SELECT campus_name 
-            FROM campus 
-            WHERE campus_name = %s
-        """, (admin_campus,))
-        campuses = cur.fetchall()
+        cur.execute("SELECT campus_name FROM campus WHERE campus_name = %s", (admin_campus,))
+    campuses = [c["campus_name"] for c in cur.fetchall()]
 
     cur.close()
     conn.close()
@@ -892,45 +904,53 @@ def addAdmin():
         if not is_password_strong(password):
             return render_template(
                 "admin/addAdmin.html",
-                admin_username=session["admin_username"],
+                admin_username=admin_username,
+                is_super_admin=is_super_admin,
                 message="Password is too weak! Must include: uppercase, lowercase, number, symbol, and min 8 chars.",
                 category="danger",
-                admins=[]
+                admins=[],
+                campuses=campuses,
+                admin_campus=admin_campus
             )
 
         hashed_pw = generate_password_hash(password)
 
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Check duplicate username or email
-        cur.execute(
-            "SELECT 1 FROM admin WHERE username = %s OR email = %s",
-            (username, email)
-        )
-        exists = cur.fetchone()
-
-        if exists:
+        # Check duplicates
+        cur.execute("SELECT 1 FROM admin WHERE username = %s OR email = %s", (username, email))
+        if cur.fetchone():
             cur.close()
             conn.close()
             return render_template(
                 "admin/addAdmin.html",
-                admin_username=session["admin_username"],
+                admin_username=admin_username,
                 is_super_admin=is_super_admin,
                 message="Username or email already exists.",
                 category="danger",
                 admins=[],
+                campuses=campuses,
                 admin_campus=admin_campus
             )
 
-        # Insert admin directly (NO OTP)
-        cur.execute(
-            """
+        # Insert new admin
+        cur.execute("""
             INSERT INTO admin (fullname, username, email, campus, password)
             VALUES (%s, %s, %s, %s, %s)
-            """,
-            (fullname, username, email, campus, hashed_pw)
-        )
+            RETURNING id
+        """, (fullname, username, email, campus, hashed_pw))
+        new_admin_id = cur.fetchone()["id"]
+
+        # Log who added the admin and their role
+        cur.execute("""
+            INSERT INTO admin_logs (admin_username, campus, action)
+            VALUES (%s, %s, %s)
+        """, (
+            admin_username,
+            admin_campus,
+            f"{'Super Admin' if is_super_admin else 'Admin'} {admin_fullname} added new admin '{fullname}' ({username}) to campus {campus}"
+        ))
 
         conn.commit()
         cur.close()
@@ -939,13 +959,12 @@ def addAdmin():
         message = "Admin account created successfully."
         category = "success"
 
-    admins = []
+    # Fetch current admins for table
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-
     if is_super_admin:
         cur.execute("""
-            SELECT id, fullname, username, email, campus, 'Admin' AS role
+            SELECT id, fullname, username, email, COALESCE(campus, 'ALL') AS campus, 'Admin' AS role
             FROM admin
             UNION ALL
             SELECT id, fullname, username, email, COALESCE(campus, 'ALL') AS campus, 'Super Admin' AS role
@@ -959,49 +978,21 @@ def addAdmin():
             WHERE campus = %s
             ORDER BY fullname ASC
         """, (admin_campus,))
-
     admins = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    deleted_admins = []
-    if is_super_admin:
-        conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT id, fullname, username, email, campus, deleted_by, deleted_at
-            FROM deleted_admin
-            ORDER BY deleted_at DESC
-        """)
-        deleted_admins = cur.fetchall()
-        cur.close()
-        conn.close()
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT program_name, created_at, is_active
-        FROM program
-        WHERE campus = %s
-        ORDER BY created_at DESC
-    """, (admin_campus,))
-    programs = cur.fetchall()
     cur.close()
     conn.close()
 
     return render_template(
         "admin/addAdmin.html",
-        admin_username=session["admin_username"],
+        admin_username=admin_username,
         is_super_admin=is_super_admin,
         message=message,
         category=category,
         admins=admins,
-        programs=programs,
+        campuses=campuses,
         admin_campus=admin_campus,
-        deleted_admins=deleted_admins,
         campus_name=campus_name,
-        campus_address=campus_address,
-        campuses=campuses
+        campus_address=campus_address
     )
 
 @admin_bp.route("/delete-admin", methods=["POST"])
@@ -1292,108 +1283,7 @@ def editAdmin():
         cur.close()
         conn.close()
         return jsonify(success=False, message=str(e))
-
-@admin_bp.route("/addProgram", methods=["POST"])
-def addProgram():
-    if "admin_username" not in session:
-        return jsonify(success=False, message="Unauthorized")
-
-    program_name = request.form.get("program_name")
-    campus = request.form.get("campus")
-    category_letters = request.form.get("category_letters")
-    category_descriptions = request.form.get("category_descriptions")
-
-    if not category_letters or not category_descriptions:
-        return jsonify(success=False, message="Select at least one category")
-
-    if not program_name or not campus:
-        return jsonify(success=False, message="Missing data")
-
-    admin_username = session["admin_username"]
-
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT campus FROM admin WHERE username = %s",
-            (admin_username,)
-        )
-        admin_campus = cur.fetchone()[0]
-
-        cur.execute("""
-            INSERT INTO program (program_name, campus, category_letter, category_description)
-            VALUES (%s, %s, %s, %s)
-        """, (
-            program_name,
-            campus,
-            category_letters,
-            category_descriptions
-        ))
-
-        cur.execute("""
-            INSERT INTO admin_logs (admin_username, campus, action)
-            VALUES (%s, %s, %s)
-        """, (
-            admin_username,
-            admin_campus,
-            f"Added new program '{program_name}'"
-        ))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify(success=True)
-
-    except Exception as e:
-        return jsonify(success=False, message=str(e))
     
-@admin_bp.route("/addProgramColor", methods=["POST"])
-def addProgramColor():
-    if "admin_username" not in session:
-        return jsonify(success=False, message="Unauthorized")
-
-    data = request.get_json()
-    program_name = data.get("program_name")
-    color = data.get("color")
-
-    if not program_name or not color:
-        return jsonify(success=False, message="Missing data")
-
-    admin_username = session["admin_username"]
-
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute("SELECT campus FROM admin WHERE username = %s", (admin_username,))
-        admin_campus = cur.fetchone()[0]
-
-        cur.execute("""
-            UPDATE program
-            SET color = %s
-            WHERE program_name = %s
-        """, (color, program_name))
-
-        cur.execute("""
-            INSERT INTO admin_logs (admin_username, campus, action)
-            VALUES (%s, %s, %s)
-        """, (
-            admin_username,
-            admin_campus,
-            f"Set color '{color}' for program '{program_name}'"
-        ))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify(success=True)
-
-    except Exception as e:
-        return jsonify(success=False, message=str(e))
-
 @admin_bp.route("/program")
 def program():
     if "admin_username" not in session:
@@ -1405,65 +1295,58 @@ def program():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    # Check if sub admin
-    cur.execute("SELECT id, campus FROM admin WHERE username = %s", (admin_username,))
-    admin = cur.fetchone()
-
-    # Check if super admin
+    # Determine role
     cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (admin_username,))
-    is_super_admin_row = cur.fetchone()
-    is_super_admin = bool(is_super_admin_row)
+    super_admin_row = cur.fetchone()
+    is_super_admin = bool(super_admin_row)
 
-    if not admin and not is_super_admin:
-        cur.close()
-        conn.close()
-        return redirect(url_for("admin.login"))
-
-    # Determine campus list
     if is_super_admin:
-        admin_campus = is_super_admin_row.get("campus") or "ALL"
+        admin_campus = super_admin_row.get("campus") or "ALL"
+        # Fetch all campuses for dropdown
         cur.execute("SELECT campus_name FROM campus ORDER BY campus_name ASC")
-        campuses = cur.fetchall()  # list of dicts: {'campus_name': '...'}
+        campuses = cur.fetchall()
+
         # Fetch programs
-        if selected_campus:
+        if selected_campus and selected_campus != "":
+            # Filtered by selected campus
             cur.execute("""
-                SELECT id, program_name, created_at, is_active, color
+                SELECT id, program_name, campus, created_at, is_active, color
                 FROM program
                 WHERE campus = %s
                 ORDER BY created_at DESC
             """, (selected_campus,))
+            programs_by_campus = {selected_campus: cur.fetchall()}
         else:
+            # All campuses, grouped
             cur.execute("""
-                SELECT id, program_name, created_at, is_active, color
+                SELECT campus, id, program_name, created_at, is_active, color
                 FROM program
-                ORDER BY created_at DESC
+                ORDER BY campus ASC, created_at DESC
             """)
+            programs = cur.fetchall()
+            programs_by_campus = {}
+            for p in programs:
+                campus_name = p["campus"]
+                programs_by_campus.setdefault(campus_name, []).append(p)
+
     else:
-        admin_campus = admin["campus"]
-        campuses = [{"campus_name": admin_campus}]  # only their campus
+        # Sub admin: only their campus
+        cur.execute("SELECT id, campus FROM admin WHERE username = %s", (admin_username,))
+        admin_row = cur.fetchone()
+        if not admin_row:
+            cur.close()
+            conn.close()
+            return redirect(url_for("admin.login"))
+
+        admin_campus = admin_row["campus"]
+        campuses = [{"campus_name": admin_campus}]
         cur.execute("""
-            SELECT id, program_name, created_at, is_active, color
+            SELECT id, program_name, campus, created_at, is_active, color
             FROM program
             WHERE campus = %s
             ORDER BY created_at DESC
         """, (admin_campus,))
-
-    programs = cur.fetchall()
-
-    cur.execute("""
-        SELECT campus_name, campus_address 
-        FROM campus 
-        WHERE campus_name = %s
-    """, (admin_campus,))
-
-    campus_data = cur.fetchone()
-
-    if campus_data:
-        campus_name = campus_data["campus_name"]
-        campus_address = campus_data["campus_address"]
-    else:
-        campus_name = admin_campus
-        campus_address = ""
+        programs_by_campus = {admin_campus: cur.fetchall()}
 
     cur.close()
     conn.close()
@@ -1475,13 +1358,127 @@ def program():
         "admin/program.html",
         admin_username=admin_username,
         is_super_admin=is_super_admin,
-        programs=programs,
-        admin_campus=admin_campus,
+        campuses=campuses,
         selected_campus=selected_campus,
-        campus_name=campus_name,
-        campus_address=campus_address,
-        campuses=campuses
+        programs_by_campus=programs_by_campus,
     )
+
+@admin_bp.route("/addProgram", methods=["POST"])
+def addProgram():
+    if "admin_username" not in session:
+        return jsonify(success=False, message="Unauthorized")
+
+    program_name = request.form.get("program_name")
+    category_letters = request.form.get("category_letters")
+    category_descriptions = request.form.get("category_descriptions")
+
+    if not category_letters or not category_descriptions:
+        return jsonify(success=False, message="Select at least one category")
+
+    admin_username = session["admin_username"]
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Determine role
+        cur.execute("SELECT username, campus FROM super_admin WHERE username = %s", (admin_username,))
+        row = cur.fetchone()
+
+        if row:
+            is_super_admin = True
+            admin_campus = row.get("campus") or "ALL"
+            campus = request.form.get("campus")  # ✅ now assigned here
+
+        else:
+            cur.execute("SELECT username, campus FROM admin WHERE username = %s", (admin_username,))
+            row = cur.fetchone()
+
+            if row:
+                is_super_admin = False
+                admin_campus = row["campus"]
+                campus = admin_campus  # ✅ forced
+            else:
+                cur.close()
+                conn.close()
+                return jsonify(success=False, message="Unauthorized")
+
+        # ✅ NOW validate AFTER campus is set
+        if not program_name or not campus:
+            return jsonify(success=False, message="Missing data")
+
+        # Insert program
+        cur.execute("""
+            INSERT INTO program (program_name, campus, category_letter, category_description)
+            VALUES (%s, %s, %s, %s)
+        """, (program_name, campus, category_letters, category_descriptions))
+
+        # Log action
+        cur.execute("""
+            INSERT INTO admin_logs (admin_username, campus, action)
+            VALUES (%s, %s, %s)
+        """, (admin_username, admin_campus, f"Added new program '{program_name}' at campus '{campus}'"))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify(success=True)
+
+    except Exception as e:
+        return jsonify(success=False, message=str(e))
+
+
+@admin_bp.route("/addProgramColor", methods=["POST"])
+def addProgramColor():
+    if "admin_username" not in session:
+        return jsonify(success=False, message="Unauthorized")
+
+    data = request.get_json()
+    program_name = data.get("program_name")
+    color = data.get("color")
+    admin_username = session["admin_username"]
+
+    if not program_name or not color:
+        return jsonify(success=False, message="Missing data")
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Determine role
+        cur.execute("SELECT username, campus FROM super_admin WHERE username = %s", (admin_username,))
+        row = cur.fetchone()
+        if row:
+            is_super_admin = True
+            admin_campus = row.get("campus") or "ALL"
+        else:
+            cur.execute("SELECT username, campus FROM admin WHERE username = %s", (admin_username,))
+            row = cur.fetchone()
+            if row:
+                is_super_admin = False
+                admin_campus = row["campus"]
+            else:
+                cur.close()
+                conn.close()
+                return jsonify(success=False, message="Unauthorized")
+
+        # Update program color
+        cur.execute("UPDATE program SET color = %s WHERE program_name = %s", (color, program_name))
+
+        # Log action
+        cur.execute("""
+            INSERT INTO admin_logs (admin_username, campus, action)
+            VALUES (%s, %s, %s)
+        """, (admin_username, admin_campus, f"Set color '{color}' for program '{program_name}'"))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify(success=True)
+
+    except Exception as e:
+        return jsonify(success=False, message=str(e))
+
 
 @admin_bp.route("/deleteProgram", methods=["POST"])
 def deleteProgram():
@@ -1490,55 +1487,54 @@ def deleteProgram():
 
     data = request.get_json()
     program_id = data.get("program_id")
+    admin_username = session["admin_username"]
 
     if not program_id:
         return jsonify(success=False, message="Missing program ID")
 
-    admin_username = session["admin_username"]
-
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        cur.execute(
-            "SELECT campus FROM admin WHERE username = %s",
-            (admin_username,)
-        )
-        admin_campus = cur.fetchone()[0]
-
-        cur.execute(
-            "SELECT program_name FROM program WHERE id = %s",
-            (program_id,)
-        )
+        # Determine role
+        cur.execute("SELECT username, campus FROM super_admin WHERE username = %s", (admin_username,))
         row = cur.fetchone()
+        if row:
+            is_super_admin = True
+            admin_campus = row.get("campus") or "ALL"
+        else:
+            cur.execute("SELECT username, campus FROM admin WHERE username = %s", (admin_username,))
+            row = cur.fetchone()
+            if row:
+                is_super_admin = False
+                admin_campus = row["campus"]
+            else:
+                cur.close()
+                conn.close()
+                return jsonify(success=False, message="Unauthorized")
 
+        cur.execute("SELECT program_name FROM program WHERE id = %s", (program_id,))
+        row = cur.fetchone()
         if not row:
             return jsonify(success=False, message="Program not found")
 
-        program_name = row[0]
+        program_name = row["program_name"]
+        cur.execute("DELETE FROM program WHERE id = %s", (program_id,))
 
-        cur.execute(
-            "DELETE FROM program WHERE id = %s",
-            (program_id,)
-        )
-
+        # Log action
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s)
-        """, (
-            admin_username,
-            admin_campus,
-            f"Deleted program '{program_name}'"
-        ))
+        """, (admin_username, admin_campus, f"Deleted program '{program_name}'"))
 
         conn.commit()
         cur.close()
         conn.close()
-
         return jsonify(success=True)
 
     except Exception as e:
         return jsonify(success=False, message=str(e))
+
 
 @admin_bp.route("/editProgram", methods=["POST"])
 def editProgram():
@@ -1549,28 +1545,41 @@ def editProgram():
     program_id = data.get("id")
     new_name = data.get("name")
     new_color = data.get("color")
+    admin_username = session["admin_username"]
 
     if not program_id or (not new_name and not new_color):
         return jsonify(success=False, message="Missing data")
 
-    admin_username = session["admin_username"]
-
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        cur.execute("SELECT campus FROM admin WHERE username = %s", (admin_username,))
-        admin_campus = cur.fetchone()[0]
-
-        cur.execute("SELECT program_name, color FROM program WHERE id = %s", (program_id,))
+        # Determine role
+        cur.execute("SELECT username, campus FROM super_admin WHERE username = %s", (admin_username,))
         row = cur.fetchone()
-        if not row:
+        if row:
+            is_super_admin = True
+            admin_campus = row.get("campus") or "ALL"
+        else:
+            cur.execute("SELECT username, campus FROM admin WHERE username = %s", (admin_username,))
+            row = cur.fetchone()
+            if row:
+                is_super_admin = False
+                admin_campus = row["campus"]
+            else:
+                cur.close()
+                conn.close()
+                return jsonify(success=False, message="Unauthorized")
+
+        # Fetch old program
+        cur.execute("SELECT program_name, color FROM program WHERE id = %s", (program_id,))
+        old_row = cur.fetchone()
+        if not old_row:
             return jsonify(success=False, message="Program not found")
-        old_name, old_color = row
+        old_name, old_color = old_row["program_name"], old_row["color"]
 
         fields_to_update = []
         params = []
-
         action_parts = []
 
         if new_name and new_name != old_name:
@@ -1587,10 +1596,10 @@ def editProgram():
             return jsonify(success=False, message="No changes detected")
 
         params.append(program_id)
-
         sql = f"UPDATE program SET {', '.join(fields_to_update)} WHERE id = %s"
         cur.execute(sql, params)
 
+        # Log changes
         action_text = "; ".join(action_parts)
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
@@ -1600,7 +1609,6 @@ def editProgram():
         conn.commit()
         cur.close()
         conn.close()
-
         return jsonify(success=True)
 
     except Exception as e:
@@ -1616,65 +1624,70 @@ def campuses():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    # Check super admin
+    # Check if super admin
     cur.execute("SELECT * FROM super_admin WHERE username = %s", (admin_username,))
     super_admin = cur.fetchone()
+    is_super_admin = bool(super_admin)
 
-    if not super_admin:
-        cur.close()
-        conn.close()
-        return redirect(url_for("admin.program"))
-    
-    # Get super admin campus info
-    admin_campus = super_admin.get("campus") if super_admin else None
+    # Check if sub admin
+    if not is_super_admin:
+        cur.execute("SELECT * FROM admin WHERE username = %s", (admin_username,))
+        sub_admin = cur.fetchone()
+        if not sub_admin:
+            cur.close()
+            conn.close()
+            return redirect(url_for("admin.login"))
+        admin_campus = sub_admin["campus"]
+    else:
+        admin_campus = super_admin.get("campus") or "ALL"
 
-    if admin_campus and admin_campus != "ALL":
+    # Determine campus info for header
+    if is_super_admin and admin_campus != "ALL":
         cur.execute("""
             SELECT campus_name, campus_address
             FROM campus
             WHERE campus_name = %s
         """, (admin_campus,))
-        
         campus_data = cur.fetchone()
-
-        if campus_data:
-            campus_name = campus_data["campus_name"]
-            campus_address = campus_data["campus_address"]
-        else:
-            campus_name = admin_campus
-            campus_address = ""
+        campus_name = campus_data["campus_name"] if campus_data else admin_campus
+        campus_address = campus_data["campus_address"] if campus_data else ""
+    elif not is_super_admin:
+        cur.execute("""
+            SELECT campus_name, campus_address
+            FROM campus
+            WHERE campus_name = %s
+        """, (admin_campus,))
+        campus_data = cur.fetchone()
+        campus_name = campus_data["campus_name"] if campus_data else admin_campus
+        campus_address = campus_data["campus_address"] if campus_data else ""
     else:
         campus_name = "ALL CAMPUSES"
         campus_address = ""
 
-    # ✅ ADD CAMPUS
-    if request.form.get("action") == "add":
-        campus_name = request.form.get("campus_name")
-        campus_address = request.form.get("campus_address")
+    # Handle POST actions (add/edit/delete)
+    action = request.form.get("action")
+    if action == "add" and is_super_admin:
+        campus_name_input = request.form.get("campus_name")
+        campus_address_input = request.form.get("campus_address")
         guidance_counselor = request.form.get("guidance_counselor")
 
-        # Check duplicate campus name
-        cur.execute(
-            "SELECT id FROM campus WHERE LOWER(campus_name) = LOWER(%s)",
-            (campus_name,)
-        )
+        # Check duplicate campus
+        cur.execute("SELECT id FROM campus WHERE LOWER(campus_name) = LOWER(%s)", (campus_name_input,))
         existing = cur.fetchone()
-
         if existing:
             duplicate = True
         else:
             cur.execute("""
                 INSERT INTO campus (campus_name, campus_address, guidance_counselor)
                 VALUES (%s, %s, %s)
-            """, (campus_name, campus_address, guidance_counselor))
+            """, (campus_name_input, campus_address_input, guidance_counselor))
             conn.commit()
             duplicate = False
 
-    # ✅ EDIT CAMPUS
-    elif request.form.get("action") == "edit":
+    elif action == "edit" and is_super_admin:
         campus_id = request.form.get("campus_id")
-        campus_name = request.form.get("campus_name")
-        campus_address = request.form.get("campus_address")
+        campus_name_input = request.form.get("campus_name")
+        campus_address_input = request.form.get("campus_address")
         guidance_counselor = request.form.get("guidance_counselor")
 
         cur.execute("""
@@ -1683,18 +1696,20 @@ def campuses():
                 campus_address = %s,
                 guidance_counselor = %s
             WHERE id = %s
-        """, (campus_name, campus_address, guidance_counselor, campus_id))
+        """, (campus_name_input, campus_address_input, guidance_counselor, campus_id))
         conn.commit()
 
-    # ✅ DELETE CAMPUS
-    elif request.form.get("action") == "delete":
+    elif action == "delete" and is_super_admin:
         campus_id = request.form.get("campus_id")
-
         cur.execute("DELETE FROM campus WHERE id = %s", (campus_id,))
         conn.commit()
 
     # Fetch campuses
-    cur.execute("SELECT * FROM campus ORDER BY campus_name ASC")
+    if is_super_admin:
+        cur.execute("SELECT * FROM campus ORDER BY campus_name ASC")
+    else:
+        # Sub admin → only their campus
+        cur.execute("SELECT * FROM campus WHERE campus_name = %s", (admin_campus,))
     campuses = cur.fetchall()
 
     cur.close()
@@ -1705,7 +1720,7 @@ def campuses():
         campuses=campuses,
         campus_name=campus_name,
         campus_address=campus_address,
-        is_super_admin=True,
+        is_super_admin=is_super_admin,
         duplicate=locals().get("duplicate", False)
     )
 
@@ -1718,6 +1733,7 @@ def addParticipant():
     exam_id = request.form["exam_id"].strip()
     gender = request.form["gender"]
     email = request.form["email"].strip()
+    school_year = request.form["school_year"].strip()
 
     admin_username = session["admin_username"]
 
@@ -1725,33 +1741,39 @@ def addParticipant():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute(
-            "SELECT id, campus FROM admin WHERE username = %s",
-            (admin_username,)
-        )
-        admin = cur.fetchone()
-        if not admin:
-            cur.close()
-            conn.close()
-            return redirect(url_for("admin.dashboard", error="Admin not found"))
+        # Identify if super or sub admin
+        cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (admin_username,))
+        super_admin = cur.fetchone()
+        if super_admin:
+            added_by_id = super_admin[0]
+            added_by_type = "super"
+            admin_campus = super_admin[1] or "ALL"
+        else:
+            cur.execute("SELECT id, campus FROM admin WHERE username = %s", (admin_username,))
+            sub_admin = cur.fetchone()
+            if not sub_admin:
+                cur.close()
+                conn.close()
+                return redirect(url_for("admin.dashboard", error="Admin not found"))
+            added_by_id = sub_admin[0]
+            added_by_type = "sub"
+            admin_campus = sub_admin[1]
 
-        admin_id, admin_campus = admin
-
-        cur.execute(
-            "SELECT 1 FROM student WHERE exam_id = %s OR email = %s",
-            (exam_id, email)
-        )
+        # Check duplicate exam_id or email
+        cur.execute("SELECT 1 FROM student WHERE exam_id = %s OR email = %s", (exam_id, email))
         if cur.fetchone():
             cur.close()
             conn.close()
             return redirect(url_for("admin.dashboard", error="❌ Examination ID or Email already exists!"))
 
+        # Insert participant
         cur.execute("""
             INSERT INTO student 
-                (fullname, exam_id, gender, email, campus, added_by)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (fullname, exam_id, gender, email, admin_campus, admin_id))
+                (fullname, exam_id, gender, email, school_year, campus, added_by, added_by_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (fullname, exam_id, gender, email, school_year, admin_campus, added_by_id, added_by_type))
 
+        # Log admin action
         cur.execute("""
             INSERT INTO admin_logs (admin_username, campus, action)
             VALUES (%s, %s, %s)
@@ -1759,11 +1781,7 @@ def addParticipant():
 
         conn.commit()
 
-        cur.execute(
-            "SELECT fullname, campus FROM admin WHERE username = %s", (admin_username,)
-        )
-        fullname, admin_campus = cur.fetchone()
-
+        # Fetch updated dashboard stats
         cur.execute("""
             SELECT COUNT(*) FROM student
             WHERE campus = %s AND EXTRACT(YEAR FROM created_at) = %s
@@ -1777,14 +1795,14 @@ def addParticipant():
                 ON a.student_id = s.id OR a.exam_id = s.exam_id
             WHERE s.campus = %s
             AND EXTRACT(YEAR FROM s.created_at) = %s
-            AND (a.preferred_program IS NULL OR a.preferred_program = '');
+            AND (a.preferred_program IS NULL OR a.preferred_program = '')
         """, (admin_campus, datetime.now().year))
         pending_students = cur.fetchone()[0]
 
         cur.execute("""
             SELECT COUNT(DISTINCT admin_username)
             FROM admin_logs
-            WHERE created_at >= NOW() - INTERVAL '1 month';
+            WHERE created_at >= NOW() - INTERVAL '1 month'
         """)
         active_admins = cur.fetchone()[0]
 
@@ -1800,7 +1818,7 @@ def addParticipant():
                 FROM admin_logs
                 GROUP BY admin_username
             ) l ON a.username = l.admin_username
-            ORDER BY a.fullname ASC;
+            ORDER BY a.fullname ASC
         """)
         admins = cur.fetchall()
 
@@ -1810,7 +1828,7 @@ def addParticipant():
         return render_template(
             "admin/dashboard.html",
             admin_username=admin_username,
-            fullname=fullname,
+            fullname=admin_username,
             admin_campus=admin_campus,
             total_students=total_students,
             pending_students=pending_students,
@@ -1839,7 +1857,6 @@ def upload():
         return redirect(url_for("admin.dashboard", error="No file part"))
 
     file = request.files["file"]
-
     if file.filename == "":
         return redirect(url_for("admin.dashboard", error="No selected file"))
 
@@ -1855,77 +1872,77 @@ def upload():
         df = pd.read_excel(file, dtype=str)
         df.columns = df.columns.str.lower().str.strip()
 
-        required_cols = {"fullname", "exam_id", "gender", "email"}
-        if not required_cols.issubset(df.columns):
+        # Enforce exact required columns
+        required_cols = ["exam_id", "fullname", "email", "gender", "school_year"]
+        if list(df.columns) != required_cols:
             return redirect(url_for(
                 "admin.dashboard",
-                error="Excel must contain columns: fullname, exam_id, gender, email"
+                error=f"Excel must contain exactly these columns in this order: {', '.join(required_cols)}"
             ))
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute(
-            "SELECT id, campus FROM admin WHERE username = %s",
-            (admin_username,)
-        )
-        admin = cur.fetchone()
-
-        if not admin:
-            return redirect(url_for("admin.dashboard", error="Admin not found"))
-
-        admin_id, admin_campus = admin
+        # Identify if super admin
+        cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (admin_username,))
+        super_admin = cur.fetchone()
+        if super_admin:
+            added_by_id = super_admin[0]
+            added_by_type = "super"
+            admin_campus = super_admin[1] or "ALL"
+        else:
+            # Then check sub admin
+            cur.execute("SELECT id, campus FROM admin WHERE username = %s", (admin_username,))
+            sub_admin = cur.fetchone()
+            if not sub_admin:
+                cur.close()
+                conn.close()
+                return redirect(url_for("admin.dashboard", error="Admin not found"))
+            added_by_id = sub_admin[0]
+            added_by_type = "sub"
+            admin_campus = sub_admin[1]
 
         inserted = 0
         skipped = 0
 
         for _, row in df.iterrows():
-            fullname = (row.get("fullname") or "").strip().upper()
             exam_id = (row.get("exam_id") or "").strip()
-            gender = (row.get("gender") or "").strip()
+            fullname = (row.get("fullname") or "").strip().upper()
             email = (row.get("email") or "").strip()
+            gender = (row.get("gender") or "").strip()
+            school_year = (row.get("school_year") or "").strip()
 
-            if not fullname or not exam_id or not email:
+            # Skip invalid rows
+            if not all([exam_id, fullname, email, gender, school_year]) or "-" not in school_year:
                 skipped += 1
                 continue
 
-            cur.execute(
-                "SELECT 1 FROM student WHERE exam_id = %s OR email = %s",
-                (exam_id, email)
-            )
+            # Check duplicates
+            cur.execute("SELECT 1 FROM student WHERE exam_id = %s OR email = %s", (exam_id, email))
             if cur.fetchone():
                 skipped += 1
                 continue
 
+            # Insert student with added_by_id and added_by_type
             cur.execute("""
                 INSERT INTO student
-                    (fullname, exam_id, gender, email, campus, added_by)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                fullname,
-                exam_id,
-                gender,
-                email,
-                admin_campus,
-                admin_id
-            ))
-
+                    (exam_id, fullname, email, gender, campus, added_by, added_by_type, school_year)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (exam_id, fullname, email, gender, admin_campus, added_by_id, added_by_type, school_year))
             inserted += 1
 
+        # Log admin action
         if inserted > 0:
             cur.execute("""
                 INSERT INTO admin_logs (admin_username, campus, action)
                 VALUES (%s, %s, %s)
-            """, (
-                admin_username,
-                admin_campus,
-                f"Added {inserted} new student through excel"
-            ))
+            """, (admin_username, admin_campus, f"Added {inserted} new student(s) through Excel upload"))
 
         conn.commit()
         cur.close()
         conn.close()
 
+        # Redirect to respondents page like addParticipant
         return redirect(url_for(
             "admin.dashboard",
             success=1,
@@ -1933,12 +1950,9 @@ def upload():
         ))
 
     except Exception as e:
-        return redirect(url_for(
-            "admin.dashboard",
-            error=f"Error reading Excel file: {str(e)}"
-        ))
+        return redirect(url_for("admin.dashboard", error=f"Error reading Excel file: {str(e)}"))
 
-PER_PAGE = 10
+PER_PAGE = 20
 
 @admin_bp.route("/respondents")
 def respondents():
@@ -1989,7 +2003,6 @@ def respondents():
     selected_program = request.args.get("program", "")
     search_query = request.args.get("q", "").strip()
     status_filter = request.args.get("status", "")
-    selected_year = request.args.get("year", type=int) or datetime.now().year
     page = request.args.get("page", 1, type=int)
 
     # Fetch programs dynamically based on campus
@@ -2025,6 +2038,19 @@ def respondents():
         """, (admin_campus, admin_campus))
 
     programs = [row[0] for row in cur.fetchall()]
+
+    cur.execute("""
+        SELECT DISTINCT school_year
+        FROM student
+        WHERE school_year IS NOT NULL
+        ORDER BY school_year DESC;
+    """)
+    available_years = [row[0] for row in cur.fetchall()]
+
+    # default selection
+    selected_year = request.args.get("year")
+    if not selected_year:
+        selected_year = available_years[0] if available_years else None
 
     params = [selected_year]
     conditions = []
@@ -2071,7 +2097,7 @@ def respondents():
                sa.pair86
         FROM student s
         LEFT JOIN student_survey_answer sa ON s.exam_id = sa.exam_id
-        WHERE EXTRACT(YEAR FROM s.created_at) = %s
+        WHERE s.school_year = %s
         {where_clause}
         ORDER BY s.fullname ASC;
     """
@@ -2127,7 +2153,7 @@ def respondents():
         campus_address=campus_address,
         admin_campus=admin_campus,
         is_super_admin=is_super_admin,
-        available_years=[selected_year],
+        available_years=available_years,
         year=selected_year,
         students=students_paginated,
         search_query=search_query,
@@ -2171,7 +2197,7 @@ def adminSurveyResult():
         admin_campus = admin[1]
 
     cur.execute("""
-        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+        SELECT s.exam_id, s.fullname, s.school_year, s.campus, s.photo,
                c.campus_name, c.campus_address, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
@@ -2203,16 +2229,12 @@ def adminSurveyResult():
     if not row:
         return "No survey results found."
 
-    created_at = row[2]
-
-    start_year = created_at.year
-    end_year = start_year + 1
-    year = f"{start_year}-{end_year}"
+    year = row[2]
 
     student_results = {
         "exam_id": row[0],
         "fullname": row[1],
-        "created_at": row[2],
+        "school_year": row[2],
         "campus": row[3],
         "photo": row[4],
         "campus_name": row[5],
@@ -2256,12 +2278,15 @@ def adminSurveyResult():
         values = [f"%{letter}%" for letter in top_letters]
 
         query = f"""
-            SELECT program_name, category_letter
+            SELECT DISTINCT ON (program_name) program_name, category_letter
             FROM program
-            WHERE {conditions}
+            WHERE ({conditions})
+            AND TRIM(LOWER(campus)) = TRIM(LOWER(%s))
             ORDER BY program_name
             LIMIT 5
         """
+
+        values.append(student_results["campus"])
         cur.execute(query, values)
         predicted_programs = cur.fetchall()
 
@@ -2316,7 +2341,7 @@ def download_result(exam_id):
         admin_campus = admin[1]
 
     cur.execute("""
-        SELECT s.exam_id, s.fullname, s.created_at, s.campus, s.photo,
+        SELECT s.exam_id, s.fullname, s.school_year, s.campus, s.photo,
                c.campus_name, c.guidance_counselor,
                sa.preferred_program, sa.ai_explanation,
                sa.pair1, sa.pair2, sa.pair3, sa.pair4, sa.pair5,
@@ -2348,16 +2373,12 @@ def download_result(exam_id):
     if not row:
         return "Survey results not found", 404
 
-    created_at = row[2]
-
-    start_year = created_at.year
-    end_year = start_year + 1
-    year = f"{start_year}-{end_year}"
+    year = row[2]
 
     student_data = {
         "exam_id": row[0],
         "fullname": row[1],
-        "created_at": row[2],
+        "school_year": row[2],
         "campus": row[3],
         "photo": row[4],
         "campus_name": row[5],
@@ -2391,12 +2412,15 @@ def download_result(exam_id):
         values = [f"%{letter}%" for letter in top_letters]
 
         query = f"""
-            SELECT program_name, category_letter
+            SELECT DISTINCT ON (program_name) program_name, category_letter
             FROM program
-            WHERE {conditions}
+            WHERE ({conditions})
+            AND TRIM(LOWER(campus)) = TRIM(LOWER(%s))
             ORDER BY program_name
             LIMIT 5
         """
+
+        values.append(student_data["campus"])
         cur.execute(query, values)
         predicted_programs = cur.fetchall()
 
@@ -2443,7 +2467,7 @@ def download_result(exam_id):
         as_attachment=True
     )
 
-PER_PAGE = 10
+PER_PAGE = 20
 
 @admin_bp.route("/adminInventory")
 def adminInventory():
@@ -2491,19 +2515,19 @@ def adminInventory():
         campus_name = admin_campus
         campus_address = ""
 
+    cur.execute("""
+        SELECT DISTINCT school_year
+        FROM student
+        WHERE school_year IS NOT NULL
+        ORDER BY school_year DESC;
+    """)
+    available_years = [row[0] for row in cur.fetchall()]
+
+    selected_year = request.args.get("year", type=int) or (available_years[0] if available_years else None)
     selected_campus = request.args.get("campus", "")
     search_query = request.args.get("q", "")
     page = request.args.get("page", 1, type=int)
     sort = request.args.get("sort", "income_asc")
-
-    cur.execute("""
-        SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int 
-        FROM student 
-        ORDER BY 1 DESC;
-    """)
-    available_years = [row[0] for row in cur.fetchall()]
-
-    selected_year = request.args.get("year", type=int) or datetime.now().year
 
     query = """
         SELECT 
@@ -2514,7 +2538,7 @@ def adminInventory():
         FROM student s
         LEFT JOIN family_background f 
             ON f.student_id = s.id
-        WHERE EXTRACT(YEAR FROM s.created_at) = %s
+        WHERE s.school_year = %s
           AND (%s = '' OR s.fullname ILIKE %s OR s.exam_id ILIKE %s)
     """
 
@@ -2877,12 +2901,48 @@ def download_admin_inventory_pdf(student_id):
         as_attachment=True
     )
 
-@admin_bp.route("/generateInterviewAI/<int:student_id>")
-def generateInterviewAI(student_id):
+@admin_bp.route("/interviewAI/<int:student_id>")
+def interviewAI(student_id):
+    if "admin_username" not in session:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    username = session["admin_username"]
+
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    # ===== ROLE CHECK =====
+    cur.execute("SELECT campus FROM super_admin WHERE username = %s", (username,))
+    super_admin = cur.fetchone()
+
+    print("SESSION USERNAME:", username)
+    print("SUPER ADMIN RESULT:", super_admin)
+
+    if super_admin:
+        admin_campus = super_admin["campus"]
+        is_super_admin = True
+    else:
+        cur.execute("SELECT campus FROM admin WHERE username = %s", (username,))
+        sub_admin = cur.fetchone()
+
+        if not sub_admin:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        admin_campus = sub_admin["campus"]
+        is_super_admin = False
+
+    # ===== STUDENT ACCESS CHECK =====
+    cur.execute("SELECT campus FROM student WHERE id = %s", (student_id,))
+    student = cur.fetchone()
+
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    if not is_super_admin and student["campus"] != admin_campus:
+        return jsonify({"error": "Forbidden"}), 403
 
     try:
+        # ===== CHECK EXISTING (VIEW) =====
         cur.execute(
             "SELECT questions FROM interview_questions WHERE student_id = %s",
             (student_id,)
@@ -2890,10 +2950,15 @@ def generateInterviewAI(student_id):
         existing = cur.fetchone()
 
         if existing:
-            import json
             data = json.loads(existing[0])
+
+            # Safety check
+            if "questions" not in data:
+                return jsonify({"error": "Invalid stored data"}), 500
+
             return jsonify(data)
 
+        # ===== FETCH STUDENT DATA =====
         cur.execute("""
             SELECT 
                 s.fullname,
@@ -2922,6 +2987,7 @@ def generateInterviewAI(student_id):
         """, (student_id,))
 
         row = cur.fetchone()
+
         if not row:
             return jsonify({"error": "Student not found"}), 404
 
@@ -2932,6 +2998,7 @@ def generateInterviewAI(student_id):
         if not letters:
             return jsonify({"error": "No survey answers"}), 400
 
+        # ===== PROGRAM LETTERS =====
         program_letters = []
         if preferred_program:
             cur.execute(
@@ -2942,6 +3009,7 @@ def generateInterviewAI(student_id):
             if res and res[0]:
                 program_letters = [x.strip() for x in res[0].split(",")]
 
+        # ===== ANALYSIS =====
         counts = Counter(letters)
         top_three = [l for l, _ in counts.most_common(3)]
 
@@ -2960,40 +3028,125 @@ def generateInterviewAI(student_id):
             for l in program_letters
         ]
 
+        # ===== AI PROMPT =====
         prompt = f"""
-You are an educational guidance AI.
+You are an expert educational guidance counselor AI.
 
-Student: {fullname}
+Your job is to analyze if a student's chosen program aligns with their interests,
+and generate SMART, NATURAL, and VARIED interview questions.
+
+---
+
+🎯 GOALS:
+
+1. Detect alignment level:
+   - STRONG MATCH → interests align well
+   - PARTIAL MATCH → some overlap
+   - MISMATCH → little to no overlap
+
+2. Adjust explanation tone:
+   - If mismatch is strong → clearly explain concern
+   - If partial → suggest exploration
+   - If strong match → reinforce decision
+
+---
+
+🧠 QUESTION GENERATION RULES:
+
+Generate EXACTLY 6 questions that are:
+
+✔ Natural and conversational (like a real counselor)
+✔ NOT repetitive in structure
+✔ RANDOMIZED phrasing each time
+✔ Personalized using:
+   - Preferred program
+   - Student top interests
+
+✔ Mix of:
+   - 2 program-focused questions
+   - 2 interest-based questions
+   - 2 hybrid (program + interest)
+
+✔ Use varied sentence starters such as:
+   - "What draws you to..."
+   - "How do you see yourself..."
+   - "Have you considered..."
+   - "In what ways do you think..."
+   - "Would you be interested in..."
+   - "Can you imagine..."
+
+❌ DO NOT repeat patterns
+❌ DO NOT make generic questions
+❌ DO NOT use identical structure
+
+---
+
+📊 STUDENT DATA:
+
+Student Name: {fullname}
 Preferred Program: {preferred_program}
 
 Program Category Letters: {program_letters}
 Program Descriptions: {program_descriptions}
 
-Student Top 3 Letters: {top_three}
-Top 3 Descriptions: {top_three_descriptions}
+Top 3 Interest Letters: {top_three}
+Top 3 Interest Descriptions: {top_three_descriptions}
 
-All 86 Answers (Letters): {letters}
-All 86 Answers (Descriptions): {all_letter_descriptions}
+---
 
-Use ONLY the descriptions from short_letter_descriptions.
-Do NOT use Holland RIASEC.
-Do NOT invent traits.
+🧩 ANALYSIS TASK:
 
-Explain alignment or mismatch by comparing:
-- Program category letters + descriptions
-- Student top 3 letters + descriptions
+Compare:
+- Program descriptions vs student interest descriptions
 
-Use ONLY provided descriptions.
-Return JSON ONLY.
+Determine:
+- Alignment level (strong / partial / mismatch)
+
+---
+
+📌 OUTPUT REQUIREMENTS:
+
+Return STRICT JSON ONLY:
 
 {{
-  "questions": ["q1","q2","q3","q4","q5","q6"],
-  "mismatch_reason": "Explain clearly",
-  "talking_points": ["p1","p2","p3"]
+  "questions": [
+    "6 unique, varied, natural questions here"
+  ],
+  "mismatch_reason": "Clear explanation of alignment level and reasoning",
+  "talking_points": [
+    "3 smart counseling suggestions based on alignment level"
+  ]
 }}
+
+---
+
+💡 TALKING POINTS GUIDE:
+
+If STRONG MATCH:
+- Reinforce choice
+- Suggest growth paths
+- Encourage specialization
+
+If PARTIAL:
+- Suggest combining interests
+- Recommend electives or minors
+- Encourage exploration
+
+If MISMATCH:
+- Suggest alternative programs
+- Suggest hybrid careers
+- Encourage reconsideration or deeper reflection
+
+---
+
+⚠️ IMPORTANT:
+- Use ONLY given descriptions
+- Do NOT invent traits
+- Do NOT mention Holland or theory names
+- Keep tone supportive, not judgmental
 """
 
-        # ---------- GROQ AI ----------
+        # ===== CALL AI =====
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
@@ -3006,18 +3159,26 @@ Return JSON ONLY.
 
         raw = response.choices[0].message.content.strip()
 
-        import re, json
-        match = re.search(r"\{.*\}", raw, re.S)
-        if not match:
-            raise ValueError("Invalid JSON from AI")
+        # ===== SAFE JSON PARSE =====
+        try:
+            data = json.loads(raw)
+        except:
+            match = re.search(r"\{.*\}", raw, re.S)
+            if not match:
+                raise ValueError("Invalid JSON from AI")
+            data = json.loads(match.group())
 
-        data = json.loads(match.group())
+        # ===== SAVE (NO CONFLICT VERSION) =====
+        cur.execute(
+            "DELETE FROM interview_questions WHERE student_id = %s",
+            (student_id,)
+        )
 
-        # ---------- SAVE ----------
         cur.execute(
             "INSERT INTO interview_questions (student_id, questions) VALUES (%s, %s)",
             (student_id, json.dumps(data))
         )
+
         conn.commit()
 
         return jsonify(data)
@@ -3031,7 +3192,7 @@ Return JSON ONLY.
         cur.close()
         conn.close()
 
-PER_PAGE = 10
+PER_PAGE = 20
 
 @admin_bp.route("/interviewList")
 def interviewList():
@@ -3085,14 +3246,17 @@ def interviewList():
     search_query = request.args.get("q", "")
     page = request.args.get("page", 1, type=int)
 
+    # Fetch available years first
     cur.execute("""
-        SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
+        SELECT DISTINCT school_year
         FROM student
-        ORDER BY 1 DESC;
+        WHERE school_year IS NOT NULL
+        ORDER BY school_year DESC;
     """)
     available_years = [row[0] for row in cur.fetchall()]
 
-    selected_year = request.args.get("year", type=int) or datetime.now().year
+    # Get selected year from query string, default to latest available year
+    selected_year = request.args.get("year") or (available_years[0] if available_years else None)
 
     query = """
         SELECT 
@@ -3130,7 +3294,7 @@ def interviewList():
         LEFT JOIN student_schedules ss ON s.id = ss.student_id
         LEFT JOIN schedules sch ON ss.schedule_id = sch.id
         LEFT JOIN interview_questions iq ON s.id = iq.student_id
-        WHERE EXTRACT(YEAR FROM s.created_at) = %s
+        WHERE s.school_year = %s
         AND (%s = '' OR s.fullname ILIKE %s OR s.exam_id ILIKE %s)
     """
 
@@ -3305,90 +3469,81 @@ def visualization():
         return redirect(url_for("admin.login"))
 
     username = session["admin_username"]
-
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT id, campus
-        FROM super_admin
-        WHERE username = %s
-    """, (username,))
+    # --- Check if super admin ---
+    cur.execute("SELECT id, campus FROM super_admin WHERE username = %s", (username,))
     admin = cur.fetchone()
+    is_super_admin = bool(admin)
+    admin_campus = admin[1] if admin else None
 
-    is_super_admin = False
-    admin_campus = None
-
-    if admin:
-        is_super_admin = True
-        admin_id, admin_campus = admin
-    else:
-        cur.execute("""
-            SELECT id, campus
-            FROM admin
-            WHERE username = %s
-        """, (username,))
+    if not is_super_admin:
+        cur.execute("SELECT id, campus FROM admin WHERE username = %s", (username,))
         admin = cur.fetchone()
-
         if not admin:
             cur.close()
             conn.close()
             return redirect(url_for("admin.login"))
-
-        admin_id, admin_campus = admin
+        admin_campus = admin[1]
 
     selected_year = request.args.get("year", str(datetime.now().year))
     selected_gender = request.args.get("gender", "All")
     selected_campus = request.args.get("campus", "")
 
+    # --- Fetch available campuses ---
     available_campuses = []
     if is_super_admin:
         cur.execute("SELECT DISTINCT campus FROM student ORDER BY campus ASC;")
         available_campuses = [r[0] for r in cur.fetchall()]
 
-    year_query = """
-        SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int
-        FROM student
-    """
+    # Fetch available school_years in descending order
+    year_query = "SELECT DISTINCT school_year FROM student WHERE school_year IS NOT NULL"
     params = []
-
     if not is_super_admin:
-        year_query += " WHERE campus = %s"
+        year_query += " AND campus = %s"
         params.append(admin_campus)
     elif selected_campus:
-        year_query += " WHERE campus = %s"
+        year_query += " AND campus = %s"
         params.append(selected_campus)
-
-    year_query += " ORDER BY 1 ASC"
-
+    year_query += " ORDER BY school_year DESC"  # highest first
     cur.execute(year_query, tuple(params))
-    available_years = [row[0] for row in cur.fetchall()]
+    available_years = [str(row[0]) for row in cur.fetchall()]  # cast to string
 
-    cur.execute("SELECT id, program_name, color FROM program ORDER BY id ASC;")
+    # Handle selected_year
+    selected_year = request.args.get("year")
+    if not selected_year:
+        selected_year = available_years[0] if available_years else "All"
+    elif selected_year != "All" and selected_year not in available_years:
+        selected_year = available_years[0] if available_years else "All"
+
+    # --- Fetch programs ---
+    cur.execute("SELECT id, program_name, color, campus FROM program ORDER BY id ASC;")
     all_programs = cur.fetchall()
 
-    def fetch_data_for_year(year=None, gender=None):
+    # --- Fetch data for visualization ---
+    def fetch_data_for_year(year=None, gender=None, campus_filter=None):
         filters = []
         params = []
 
-        if is_super_admin:
-            if selected_campus:
-                filters.append("s.campus = %s")
-                params.append(selected_campus)
-        else:
+        # --- CAMPUS FILTER ---
+        if campus_filter:
             filters.append("s.campus = %s")
-            params.append(admin_campus)
+            params.append(campus_filter)
 
-        if year:
-            filters.append("EXTRACT(YEAR FROM s.created_at) = %s")
-            params.append(year)
+        # --- YEAR FILTER ---
+        if year and str(year).lower() != "all":
+            filters.append("s.school_year = %s")
+            params.append(str(year))
 
+        # --- GENDER FILTER ---
         if gender and gender != "All":
             filters.append("LOWER(s.gender) = LOWER(%s)")
             params.append(gender)
 
         where_clause = "WHERE " + " AND ".join(filters) if filters else ""
 
+        # --- Preferred programs ---
         cur.execute(f"""
             SELECT COALESCE(ssa.preferred_program, 'Unknown'), COUNT(*)
             FROM student_survey_answer ssa
@@ -3397,13 +3552,16 @@ def visualization():
             GROUP BY COALESCE(ssa.preferred_program, 'Unknown')
             ORDER BY COUNT(*) DESC
         """, tuple(params))
-
         preferred = cur.fetchall()
 
+        # --- Letter counts ---
         letter_cols = [f"pair{i}" for i in range(1, 87)]
         unions = [
-            f"SELECT {c} AS letter FROM student_survey_answer ssa JOIN student s ON ssa.student_id = s.id "
-            f"{where_clause} AND {c} BETWEEN 'A' AND 'R'"
+            f"""SELECT {c} AS letter
+                FROM student_survey_answer ssa
+                JOIN student s ON ssa.student_id = s.id
+                {where_clause} AND {c} BETWEEN 'A' AND 'R'
+            """
             for c in letter_cols
         ]
 
@@ -3415,50 +3573,66 @@ def visualization():
             ORDER BY COUNT(*) DESC
             LIMIT 18
         """, tuple(params * len(letter_cols)))
-
         letters = cur.fetchall()
 
         return {
             "year": str(year) if year else "All",
             "gender": gender or "All",
+            "campus": campus_filter if campus_filter else "ALL",
             "preferred_labels": [r[0] for r in preferred],
             "preferred_counts": [r[1] for r in preferred],
             "top_labels": [r[0] for r in letters],
             "top_counts": [r[1] for r in letters]
         }
 
-    if selected_year.lower() == "all":
-        all_years_data = [fetch_data_for_year(y, selected_gender) for y in available_years]
-    else:
-        all_years_data = [fetch_data_for_year(int(selected_year), selected_gender)]
+    all_years_data = []
 
-    # Determine which campus to fetch details for
     if is_super_admin:
-        if selected_campus:
-            campus_to_fetch = selected_campus
-        elif admin_campus and admin_campus != "ALL":
-            campus_to_fetch = admin_campus
-        else:
-            campus_to_fetch = None
-    else:
-        campus_to_fetch = admin_campus
 
-    # Fetch campus name and address
-    if campus_to_fetch:
-        cur.execute("""
-            SELECT campus_name, campus_address
-            FROM campus
-            WHERE campus_name = %s
-        """, (campus_to_fetch,))
-        
-        campus_data = cur.fetchone()
-        
-        if campus_data:
-            campus_name = campus_data[0]
-            campus_address = campus_data[1]
+        # 👉 If specific campus selected
+        if selected_campus:
+            if selected_year.lower() == "all":
+                for y in available_years:
+                    all_years_data.append(
+                        fetch_data_for_year(y, selected_gender, selected_campus)
+                    )
+            else:
+                all_years_data.append(
+                    fetch_data_for_year(selected_year, selected_gender, selected_campus)
+                )
+
+        # 👉 ALL CAMPUSES → SEPARATE PER CAMPUS
         else:
-            campus_name = campus_to_fetch
-            campus_address = ""
+            for campus in available_campuses:
+                if selected_year.lower() == "all":
+                    for y in available_years:
+                        all_years_data.append(
+                            fetch_data_for_year(y, selected_gender, campus)
+                        )
+                else:
+                    all_years_data.append(
+                        fetch_data_for_year(selected_year, selected_gender, campus)
+                    )
+
+    else:
+        # 👉 SUB ADMIN → ONLY THEIR CAMPUS
+        if selected_year.lower() == "all":
+            for y in available_years:
+                all_years_data.append(
+                    fetch_data_for_year(y, selected_gender, admin_campus)
+                )
+        else:
+            all_years_data.append(
+                fetch_data_for_year(selected_year, selected_gender, admin_campus)
+            )
+
+    # --- Campus details ---
+    campus_to_fetch = selected_campus or (admin_campus if admin_campus != "ALL" else None)
+    if campus_to_fetch:
+        cur.execute("SELECT campus_name, campus_address FROM campus WHERE campus_name = %s", (campus_to_fetch,))
+        campus_data = cur.fetchone()
+        campus_name = campus_data[0] if campus_data else campus_to_fetch
+        campus_address = campus_data[1] if campus_data else ""
     else:
         campus_name = "ALL CAMPUSES"
         campus_address = ""

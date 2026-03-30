@@ -28,7 +28,7 @@
 
     <!-- YEAR -->
     <div class="flex items-center gap-1">
-        <label class="font-bold">Year:</label>
+        <label class="font-bold">SY:</label>
         <form method="GET" action="{{ url_for('admin.visualization') }}">
             <select name="year"
                     class="border border-[#166D3B] rounded-md p-2"
@@ -159,7 +159,7 @@ function getChartLabels(labels, isProgramChart, type) {
     return labels;
 }
 
-function renderChart(ctx, type, labels, data, colors, label, isProgramChart = false) {
+function renderChart(ctx, type, labels, data, colors, label, isProgramChart = false, programList = []) {
     const chartLabels = getChartLabels(labels, isProgramChart, type);
 
     return new Chart(ctx, {
@@ -189,10 +189,8 @@ function renderChart(ctx, type, labels, data, colors, label, isProgramChart = fa
                         },
                         label: function(context) {
                             if (isProgramChart) {
-                                // Show: colored dot + program name + value
-                                return ALL_PROGRAMS[context.dataIndex][1] + ': ' + context.dataset.data[context.dataIndex];
+                                return programList[context.dataIndex][1] + ': ' + context.dataset.data[context.dataIndex];
                             } else {
-                                // Letters chart
                                 return ALL_LETTERS[context.dataIndex] + ': ' + context.dataset.data[context.dataIndex];
                             }
                         }
@@ -224,7 +222,7 @@ allData.forEach((yearData, idx) => {
 
     section.innerHTML = `
         <h2 class="text-xl font-bold mb-4">
-            Year: ${yearData.year} — Gender: ${yearData.gender}
+            Campus: ${yearData.campus} — School Year: ${yearData.year} — Gender: ${yearData.gender}
         </h2>
 
         <!-- PROGRAM -->
@@ -246,15 +244,25 @@ allData.forEach((yearData, idx) => {
 
     container.appendChild(section);
 
-    // Wrapped program labels (split into multiple lines)
-    const PROGRAM_LABELS = ALL_PROGRAMS.map(p => wrapLabel(p[1], 15));
-    const PROGRAM_COLORS = ALL_PROGRAMS.map(p => p[2] || "#166D3B");
+    const FILTERED_PROGRAMS = ALL_PROGRAMS.filter(p => {
+        // p = [id, program_name, color, campus]
+        return p[3] === yearData.campus;
+    });
 
-    const programData = PROGRAM_LABELS.map((label, i) =>
-        yearData.preferred_labels.includes(ALL_PROGRAMS[i][1])
-            ? yearData.preferred_counts[yearData.preferred_labels.indexOf(ALL_PROGRAMS[i][1])]
-            : 0
-    );
+    // Labels + colors (ONLY campus programs)
+    const PROGRAM_LABELS = FILTERED_PROGRAMS.map(p => wrapLabel(p[1], 15));
+    const PROGRAM_COLORS = FILTERED_PROGRAMS.map(p => p[2] || "#166D3B");
+
+    // Map data correctly
+    const programData = FILTERED_PROGRAMS.map(p => {
+        const programName = p[1];
+
+        return yearData.preferred_labels.includes(programName)
+            ? yearData.preferred_counts[
+                yearData.preferred_labels.indexOf(programName)
+            ]
+            : 0;
+    });
 
     const letterData = ALL_LETTERS.map(l =>
         yearData.top_labels.includes(l)
@@ -281,7 +289,8 @@ allData.forEach((yearData, idx) => {
             programData,
             PROGRAM_COLORS,
             "Students",
-            true // <--- this makes font smaller and wraps labels
+            true,
+            FILTERED_PROGRAMS
         );
 
         // Letter chart

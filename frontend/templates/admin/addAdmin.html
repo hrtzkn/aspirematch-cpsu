@@ -78,8 +78,8 @@
                                 <option value="" disabled selected>Select Campus</option>
 
                                 {% for c in campuses %}
-                                    <option value="{{ c.campus_name }}">
-                                        {{ c.campus_name }}
+                                    <option value="{{ c }}">
+                                        {{ c }}
                                     </option>
                                 {% endfor %}
                             </select>
@@ -305,7 +305,7 @@
                     <label class="block mb-2">Campus</label>
                     <select id="editCampus" class="w-full border p-2 rounded mb-4">
                         {% for campus in campuses %}
-                            <option value="{{ campus.campus_name }}">{{ campus.campus_name }}</option>
+                            <option value="{{ campus }}">{{ campus }}</option>
                         {% endfor %}
                     </select>
                 </div>

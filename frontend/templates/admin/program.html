@@ -32,13 +32,9 @@
 {% if is_super_admin %}
 <form method="GET" action="{{ url_for('admin.program') }}" class="flex items-center ml-4">
     <label class="text-black font-bold mr-2">Campus:</label>
-
-    <select name="campus"
-            class="border border-[#166D3B] rounded-md px-3 py-2 text-sm h-[38px]"
+    <select name="campus" class="border border-[#166D3B] rounded-md px-3 py-2 text-sm h-[38px]"
             onchange="this.form.submit()">
-
         <option value="">All Campuses</option>
-
         {% for c in campuses %}
             <option value="{{ c.campus_name }}" {% if selected_campus == c.campus_name %}selected{% endif %}>
                 {{ c.campus_name }}
@@ -91,15 +87,10 @@
 
 {% else %}
     <!-- Sub admin: fixed campus -->
-    <input type="text"
-           value="{{ admin_campus }}"
-           readonly
-           class="w-1/2 p-2 border border-[#166D3B] rounded-lg bg-gray-100 cursor-not-allowed">
-
     <input type="hidden" name="campus" value="{{ admin_campus }}">
 {% endif %}
 
-                        <div class="relative hidden  w-full">
+                        <div class="relative hidden w-full">
                             <label class="font-semibold mb-1 block">Career Category</label>
 
                             <div class="flex justify-between">
@@ -298,63 +289,9 @@
                     </form>
                 </div>
             </div>
-
-<table class="w-full border border-[#166D3B] mt-3 rounded-lg text-[14px]">
-    <thead class="bg-[#166D3B] text-white">
-        <tr>
-            <th class="px-4 py-2">Programs</th>
-            <th class="px-4 py-2 text-center">Color</th>
-            <th class="px-4 py-2 text-center">Actions</th>  
-        </tr>
-    </thead>
-    <tbody id="programTableBody">
-        {% if programs %}
-            {% for program in programs %}
-            <tr class="hover:bg-gray-100">
-                <td class="px-4 py-2 border">{{ program.program_name }}</td>
-                <td class="px-4 py-2 border text-start">
-                    {% if program.color %}
-                        <span class="inline-block w-6 h-6 rounded-full border program-color"
-                              data-color="{{ program.color }}">
-                        </span>
-                        <span class="ml-2 text-xs">{{ program.color }}</span>
-                    {% else %}
-                        <button onclick="openColorPicker('{{ program.program_name }}')"
-                                class="bg-[#166D3B] text-white px-3 py-1 rounded text-xs hover:bg-green-600">
-                            Add
-                        </button>
-                    {% endif %}
-                </td>
-                <td class="px-4 py-2 border text-center">
-                    <button class="text-[#166D3B] hover:text-black text-xs mr-2 edit-program-btn"
-                            data-id="{{ program.id }}"
-                            data-name="{{ program.program_name }}"
-                            data-color="{{ program.color or '#ffffff' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             viewBox="0 0 24 24"
-                             fill="currentColor"
-                             class="w-5 h-5">
-                            <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712Z"/>
-                            <path d="M19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z"/>
-                            <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z"/>
-                        </svg>
-                    </button>
-                    <button class="text-red-600 hover:text-black text-xs"
-                            onclick="deleteProgram('{{ program.id }}', '{{ program.program_name }}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                        <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        {% else %}
-            <tr>
-                <td class="px-4 py-2 text-center text-gray-500" colspan="3">No programs found</td>
-            </tr>
-        {% endif %}
-    </tbody>
-</table>
+<div id="programContainer">
+{% include 'admin/_program_rows.html' %}
+</div>
     
 <div id="colorModal"
      class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
@@ -473,7 +410,7 @@ const categoryKeywords = {
         "technology", "engineering",
         "mathematics", "math",
         "physics", "chemistry", "biology",
-        "stem", "problem-solving",
+        "stem", "problem-solving"
     ],
 
     "C": [
@@ -530,7 +467,7 @@ const categoryKeywords = {
         "human services", "social work",
         "counseling", "psychology",
         "community development",
-        "public service"
+        "public service", "crim"
     ],
 
     "K": [
@@ -648,11 +585,38 @@ document.getElementById("addProgramForm").addEventListener("submit", function (e
 });
 
 function reloadProgramList() {
-    fetch("{{ url_for('admin.program') }}?ajax=1")
+    fetch("/admin/program?ajax=1")
         .then(res => res.text())
         .then(html => {
             document.getElementById("programTableBody").innerHTML = html;
+
+            // 🔥 VERY IMPORTANT: re-bind events after reload
+            bindProgramEvents();
         });
+}
+
+function bindProgramEvents() {
+
+    // EDIT BUTTONS
+    document.querySelectorAll('.edit-program-btn').forEach(btn => {
+        btn.onclick = function() {
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            const color = this.dataset.color;
+
+            document.getElementById('editProgramId').value = id;
+            document.getElementById('editProgramName').value = name;
+            document.getElementById('editProgramColor').value = color || '#ffffff';
+
+            document.getElementById('editProgramModal').classList.remove('hidden');
+        };
+    });
+
+    // COLOR DISPLAY
+    document.querySelectorAll(".program-color").forEach(el => {
+        const color = el.dataset.color;
+        if (color) el.style.backgroundColor = color;
+    });
 }
 
 categorySelectBox.addEventListener("click", () => {
@@ -700,19 +664,52 @@ document.querySelectorAll("#categoryOptionsList li").forEach(option => {
 programNameInput.addEventListener("input", () => {
     const value = programNameInput.value.toLowerCase();
 
-    Object.entries(categoryKeywords).forEach(([letter, keywords]) => {
-        keywords.forEach(keyword => {
-            if (value.includes(keyword)) {
-                const li = document.querySelector(
-                    `#categoryOptionsList li[data-value="${letter}"]`
-                );
+    // 🔥 Clear previous selections first (auto mode)
+    selectedCategories.clear();
 
-                if (li && !selectedCategories.has(letter)) {
-                    li.click();
-                }
-            }
-        });
+    document.querySelectorAll("#categoryOptionsList li").forEach(li => {
+        li.classList.remove("selected-category");
+        li.querySelector(".checkboxIcon").textContent = "☐";
     });
+
+    // 🔥 Find matches
+    const matchedLetters = new Set();
+
+    Object.entries(categoryKeywords).forEach(([letter, keywords]) => {
+        for (let keyword of keywords) {
+            if (value.includes(keyword)) {
+                matchedLetters.add(letter);
+                break; // stop checking more keywords for this letter
+            }
+        }
+    });
+
+    // 🔥 Apply matches
+    matchedLetters.forEach(letter => {
+        const li = document.querySelector(
+            `#categoryOptionsList li[data-value="${letter}"]`
+        );
+
+        if (li) {
+            const desc = li.dataset.desc;
+
+            selectedCategories.set(letter, desc);
+            li.classList.add("selected-category");
+            li.querySelector(".checkboxIcon").textContent = "☑";
+        }
+    });
+
+    // 🔥 Update UI text + hidden inputs
+    categorySelectedText.textContent =
+        selectedCategories.size
+            ? Array.from(selectedCategories.keys()).join(", ")
+            : "Select category";
+
+    categoryLettersInput.value =
+        Array.from(selectedCategories.keys()).join(",");
+
+    categoryDescriptionsInput.value =
+        Array.from(selectedCategories.values()).join(" | ");
 });
 
 helpIcon.addEventListener("click", (e) => {
@@ -784,7 +781,7 @@ document.getElementById("colorPicker").addEventListener("change", function () {
     .then(data => {
         if (data.success) {
             closeColorModal();
-            location.reload();
+            reloadProgramList()
         } else {
             alert(data.message);
         }
@@ -830,7 +827,7 @@ function saveProgramEdit() {
     .then(data => {
         if(data.success){
             closeEditProgramModal();
-            location.reload();
+            reloadProgramList()
         } else {
             alert(data.message);
         }
@@ -866,12 +863,7 @@ function confirmDeleteProgram() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // Reload program table
-            fetch("/admin/program?ajax=1")
-                .then(res => res.text())
-                .then(html => {
-                    document.getElementById("programTableBody").innerHTML = html;
-                });
+            reloadProgramList();
         } else {
             alert(data.message || "Failed to delete program");
         }
@@ -893,6 +885,10 @@ function enableOutsideClickClose(modalId) {
 // Apply to modals
 enableOutsideClickClose('editProgramModal');
 enableOutsideClickClose('deleteProgramModal');
+
+document.addEventListener("DOMContentLoaded", function () {
+    bindProgramEvents();
+});
 </script>
 </body>
 </html>

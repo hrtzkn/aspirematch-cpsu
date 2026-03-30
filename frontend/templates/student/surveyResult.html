@@ -174,7 +174,7 @@
         🎓 Recommended Programs Based on Top Letters ({{ top_letters | join(", ") }})
     </h4>
 
-    <ul class="list-disc ml-6 text-[8px] lg:text-lg text-gray-700">
+    <ul class="list-disc ml-6 text-[8px] lg:text-[14px] text-gray-700">
         {% for program_name, category_letter in predicted_programs %}
             <li>
                 <span class="font-medium">{{ program_name }}</span>
@@ -188,9 +188,20 @@
                             h-[150px] lg:h-[260px] overflow-auto ml-8 mr-8">
                 </div>
 
-                <div class="mt-4 lg:mt-12 text-left ml-8 mb-4 lg:mb-8">
-                    <h2 class="text-[6px] lg:text-lg font-bold text-left mb-1"><span class="border-b border-black pb-1 inline-block">{{ guidance_counselor }}</span></h2>
-                    <h3 class="text-[8px] lg:text-sm text-left ml-6 lg:ml-6">Guidance Counselor</h3>
+                <div class="mt-4 lg:mt-12 ml-8 mb-4 lg:mb-8">
+    
+                    <div class="inline-block text-center">
+                        <h2 class="text-[6px] lg:text-lg font-bold mb-1">
+                            <span class="border-b border-black pb-1 inline-block">
+                                {{ guidance_counselor }}
+                            </span>
+                        </h2>
+                        
+                        <h3 class="text-[8px] lg:text-sm">
+                            Guidance Counselor
+                        </h3>
+                    </div>
+
                 </div>
             </div>
 

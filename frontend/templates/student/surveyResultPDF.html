@@ -130,6 +130,12 @@
             margin-top: 50px;
         }
 
+        /* wrapper to control alignment */
+        .signatory .wrapper {
+            display: inline-block;   /* shrink to content width */
+            text-align: center;      /* center title under name */
+        }
+
         .signatory .name {
             font-size: 13px;
             font-weight: bold;
@@ -140,9 +146,9 @@
 
         .signatory .title {
             font-size: 11px;
-            margin-left: 15px;
             margin-top: 3px;
             margin-bottom: 5px;
+            margin-left: 0; /* remove left push */
         }
 
         .notes-box {
@@ -347,8 +353,10 @@
 
     <!-- SIGNATORY -->
     <div class="signatory">
-        <div class="name">{{ guidance_counselor }}</div>
-        <div class="title">Guidance Counselor</div>
+        <div class="wrapper">
+            <div class="name">{{ guidance_counselor }}</div>
+            <div class="title">Guidance Counselor</div>
+        </div>
     </div>
 
 </div>
