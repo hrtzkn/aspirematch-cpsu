@@ -1352,7 +1352,10 @@ def program():
     conn.close()
 
     if request.args.get("ajax"):
-        return render_template("admin/_program_rows.html", programs=programs)
+        return render_template(
+            "admin/_program_rows.html",
+            programs_by_campus=programs_by_campus
+        )
 
     return render_template(
         "admin/program.html",
@@ -1371,6 +1374,7 @@ def addProgram():
     program_name = request.form.get("program_name")
     category_letters = request.form.get("category_letters")
     category_descriptions = request.form.get("category_descriptions")
+    color = request.form.get("color") or "#166D3B"
 
     if not category_letters or not category_descriptions:
         return jsonify(success=False, message="Select at least one category")
@@ -1409,9 +1413,9 @@ def addProgram():
 
         # Insert program
         cur.execute("""
-            INSERT INTO program (program_name, campus, category_letter, category_description)
-            VALUES (%s, %s, %s, %s)
-        """, (program_name, campus, category_letters, category_descriptions))
+            INSERT INTO program (program_name, campus, category_letter, category_description, color)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (program_name, campus, category_letters, category_descriptions, color))
 
         # Log action
         cur.execute("""
@@ -1545,6 +1549,8 @@ def editProgram():
     program_id = data.get("id")
     new_name = data.get("name")
     new_color = data.get("color")
+    new_letters = data.get("category_letters")
+    new_descriptions = data.get("category_description")
     admin_username = session["admin_username"]
 
     if not program_id or (not new_name and not new_color):
@@ -1591,6 +1597,14 @@ def editProgram():
             fields_to_update.append("color = %s")
             params.append(new_color)
             action_parts.append(f"Edited program color '{old_color}' → '{new_color}'")
+
+        if new_letters:
+            fields_to_update.append("category_letter = %s")
+            params.append(new_letters)
+
+        if new_descriptions:
+            fields_to_update.append("category_description = %s")
+            params.append(new_descriptions)
 
         if not fields_to_update:
             return jsonify(success=False, message="No changes detected")

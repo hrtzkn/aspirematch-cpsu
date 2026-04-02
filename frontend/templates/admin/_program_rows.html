@@ -18,7 +18,7 @@
                     <td class="px-4 py-2 border">{{ program.program_name }}</td>
                     <td class="px-4 py-2 border text-start">
                         {% if program.color %}
-                            <span class="inline-block w-6 h-6 rounded-full border program-color"
+                            <span class="program-color inline-block w-6 h-6 rounded-full border program-color"
                                   data-color="{{ program.color }}"></span>
                             <span class="ml-2 text-xs">{{ program.color }}</span>
                         {% else %}
@@ -29,10 +29,12 @@
                         {% endif %}
                     </td>
                     <td class="px-4 py-2 border text-center">
-                        <button class="text-[#166D3B] hover:text-black text-xs edit-program-btn"
+                        <button class="edit-program-btn text-[#166D3B] hover:text-black text-xs"
                                 data-id="{{ program.id }}"
                                 data-name="{{ program.program_name }}"
-                                data-color="{{ program.color or '#ffffff' }}">
+                                data-color="{{ program.color }}"
+                                data-letters="{{ program.category_letters }}"
+                                data-descriptions="{{ program.category_descriptions }}">
                             <svg xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 24 24"
                                 fill="currentColor"
