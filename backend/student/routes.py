@@ -1841,11 +1841,23 @@ def surveyResult():
     if answers_clean:
         letter_counts = Counter(answers_clean)
         top_letters = [letter for letter, _ in letter_counts.most_common(3)]
+        top_letters = [letter.strip().upper() for letter in top_letters]
 
     if preferred:
-        cur.execute("SELECT category_letter FROM program WHERE program_name = %s", (preferred,))
+        cur.execute("""
+            SELECT category_letter 
+            FROM program 
+            WHERE LOWER(TRIM(program_name)) = LOWER(TRIM(%s))
+            AND LOWER(TRIM(campus)) = LOWER(TRIM(%s))
+            LIMIT 1
+        """, (preferred, student_results["campus"]))
+
         result = cur.fetchone()
-        program_letters = result[0].split(",") if result else []
+
+        if result and result[0]:
+            program_letters = [letter.strip().upper() for letter in result[0].split(",")]
+        else:
+            program_letters = []
 
     if not preferred and not answers_clean:
         match_status = "Not Yet Answer"
@@ -1872,6 +1884,8 @@ def surveyResult():
         values.append(student_results["campus"])
         cur.execute(query, values)
         predicted_programs = cur.fetchall()
+    print("Top Letters:", top_letters)
+    print("Program Letters:", program_letters)
 
     conn.close()
 

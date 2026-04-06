@@ -2126,20 +2126,31 @@ def respondents():
         answers_clean = [p for p in pairs if p]
 
         top_letters = [l for l, _ in Counter(answers_clean).most_common(3)]
+        top_letters = [l.strip().upper() for l in top_letters]
+
         program_letters = []
 
         if preferred_program:
-            cur.execute(
-                "SELECT category_letter FROM program WHERE program_name = %s",
-                (preferred_program,)
-            )
+            cur.execute("""
+                SELECT category_letter 
+                FROM program 
+                WHERE LOWER(TRIM(program_name)) = LOWER(TRIM(%s))
+                AND LOWER(TRIM(campus)) = LOWER(TRIM(%s))
+                LIMIT 1
+            """, (preferred_program, admin_campus if not is_super_admin else (selected_campus or admin_campus)))
+
             result = cur.fetchone()
-            if result:
-                program_letters = result[0].split(",")
+
+            if result and result[0]:
+                program_letters = [l.strip().upper() for l in result[0].split(",")]
+            else:
+                program_letters = []
+
+        common_letters = set(top_letters) & set(program_letters)
 
         if not preferred_program and not answers_clean:
             match_status = "——"
-        elif any(letter in program_letters for letter in top_letters):
+        elif common_letters:
             match_status = "Match"
         else:
             match_status = "Not Match"
@@ -2272,11 +2283,23 @@ def adminSurveyResult():
     if answers_clean:
         letter_counts = Counter(answers_clean)
         top_letters = [letter for letter, _ in letter_counts.most_common(3)]
+        top_letters = [letter.strip().upper() for letter in top_letters]
 
     if preferred:
-        cur.execute("SELECT category_letter FROM program WHERE program_name = %s", (preferred,))
+        cur.execute("""
+            SELECT category_letter 
+            FROM program 
+            WHERE LOWER(TRIM(program_name)) = LOWER(TRIM(%s))
+            AND LOWER(TRIM(campus)) = LOWER(TRIM(%s))
+            LIMIT 1
+        """, (preferred, student_results["campus"]))
+
         result = cur.fetchone()
-        program_letters = result[0].split(",") if result else []
+
+        if result and result[0]:
+            program_letters = [letter.strip().upper() for letter in result[0].split(",")]
+        else:
+            program_letters = []
 
     if not preferred and not answers_clean:
         match_status = "Not Yet Answer"
