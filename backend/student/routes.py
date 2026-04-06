@@ -1214,25 +1214,40 @@ def home():
             student_survey_answer_completed = "✅ Completed"
 
             from collections import Counter
+
             letter_counts = Counter(answers_clean)
             top_letters = [letter for letter, _ in letter_counts.most_common(3)]
 
+            # ✅ CLEAN top letters
+            top_letters = [l.strip().upper() for l in top_letters]
+
             preferred = student_results["preferred_program"]
+            student_campus = student_results["campus"]
 
-            cur.execute("""
-                SELECT category_letter
-                FROM program
-                WHERE program_name = %s
-            """, (preferred,))
-            program_row = cur.fetchone()
+            program_letters = []
 
-            if program_row:
-                program_letters = [l.strip() for l in program_row[0].split(",")]
-                if any(letter in program_letters for letter in top_letters):
-                    match_status = "✅ Match"
-                    interview_status = "Don't need for interview"
-                else:
-                    match_status = "❌ Not Match"
+            if preferred:
+                cur.execute("""
+                    SELECT category_letter
+                    FROM program
+                    WHERE LOWER(TRIM(program_name)) = LOWER(TRIM(%s))
+                    AND LOWER(TRIM(campus)) = LOWER(TRIM(%s))
+                    LIMIT 1
+                """, (preferred, student_campus))
+
+                program_row = cur.fetchone()
+
+                if program_row and program_row[0]:
+                    program_letters = [l.strip().upper() for l in program_row[0].split(",")]
+
+            # ✅ BETTER MATCH LOGIC
+            common_letters = set(top_letters) & set(program_letters)
+
+            if common_letters:
+                match_status = "✅ Match"
+                interview_status = "Don't need for interview"
+            else:
+                match_status = "❌ Not Match"
 
             if match_status == "❌ Not Match":
                 cur.execute("""
