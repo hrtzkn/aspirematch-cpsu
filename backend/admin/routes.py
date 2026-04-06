@@ -3365,19 +3365,34 @@ def interviewList():
         answers_clean = [p for p in pairs if p]
         top_letters = [l for l, _ in Counter(answers_clean).most_common(3)]
 
+        # ✅ CLEAN top letters
+        top_letters = [l.strip().upper() for l in top_letters]
+
         program_letters = []
+
+        # ✅ Determine correct campus to use
+        student_campus = selected_campus if is_super_admin and selected_campus else admin_campus
+
         if preferred_program:
-            cur.execute(
-                "SELECT category_letter FROM program WHERE program_name = %s",
-                (preferred_program,)
-            )
+            cur.execute("""
+                SELECT category_letter 
+                FROM program 
+                WHERE LOWER(TRIM(program_name)) = LOWER(TRIM(%s))
+                AND LOWER(TRIM(campus)) = LOWER(TRIM(%s))
+                LIMIT 1
+            """, (preferred_program, student_campus))
+
             res = cur.fetchone()
-            if res:
-                program_letters = res[0].split(",")
+
+            if res and res[0]:
+                program_letters = [l.strip().upper() for l in res[0].split(",")]
+
+        # ✅ Better match logic
+        common_letters = set(top_letters) & set(program_letters)
 
         if not preferred_program and not answers_clean:
             match_status = "Not Yet Answer"
-        elif any(letter in program_letters for letter in top_letters):
+        elif common_letters:
             match_status = "Match"
         else:
             match_status = "Not Match"
