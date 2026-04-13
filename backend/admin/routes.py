@@ -11,7 +11,6 @@ from PIL import Image
 from weasyprint import HTML
 from io import BytesIO
 from psycopg2.extras import RealDictCursor
-from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta, timezone
 from flask import request
@@ -24,6 +23,7 @@ from email.message import EmailMessage
 import random
 import time
 import requests
+import bcrypt
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -50,6 +50,9 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def hash_password(password):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def is_password_strong(pw):
     return (
@@ -276,17 +279,48 @@ def login():
         cur.close()
         conn.close()
 
-        if user and check_password_hash(user["password"], password):
-            session.clear()
-            session["admin_username"] = username
-            session["admin_role"] = user_type
-            session["campus"] = campus
-            session["last_activity"] = datetime.now(timezone.utc)
-            session.permanent = True
-            session["admin_login_attempts"] = 0
-            session["admin_lock_until"] = None
+        if user:
+            valid = False
 
-            return redirect(url_for("admin.dashboard"))
+            try:
+                valid = bcrypt.checkpw(
+                    password.encode('utf-8'),
+                    user["password"].encode('utf-8')
+                )
+            except Exception:
+                valid = False
+
+            if valid:
+                # 🔄 OPTIONAL AUTO-UPGRADE (only if old hashes exist)
+                if user["password"].startswith("scrypt"):
+                    new_hash = bcrypt.hashpw(
+                        password.encode('utf-8'),
+                        bcrypt.gensalt()
+                    ).decode('utf-8')
+
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    table = "admin" if user_type == "admin" else "super_admin"
+
+                    cur.execute(
+                        f"UPDATE {table} SET password = %s WHERE username = %s",
+                        (new_hash, username)
+                    )
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+
+                # ✅ LOGIN SUCCESS (MUST ALWAYS RUN)
+                session.clear()
+                session["admin_username"] = username
+                session["admin_role"] = user_type
+                session["campus"] = campus
+                session["last_activity"] = datetime.now(timezone.utc)
+                session.permanent = True
+                session["admin_login_attempts"] = 0
+                session["admin_lock_until"] = None
+
+                return redirect(url_for("admin.dashboard"))
 
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
 
@@ -444,7 +478,7 @@ def reset_password():
         if password != confirm:
             error = "Passwords do not match."
         else:
-            hashed = generate_password_hash(password)
+            hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             conn = get_db_connection()
             cur = conn.cursor()
             table = "super_admin" if role == "super_admin" else "admin"
@@ -828,7 +862,7 @@ def addSuper():
             message = "Username or Email already exists!"
             category = "danger"
         else:
-            hashed_password = generate_password_hash(password)
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
             cur.execute("""
                 INSERT INTO super_admin (fullname, username, email, password, campus, created_at)
@@ -913,7 +947,7 @@ def addAdmin():
                 admin_campus=admin_campus
             )
 
-        hashed_pw = generate_password_hash(password)
+        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)

@@ -5,10 +5,13 @@ groq
 gunicorn
 pandas
 numpy
+
+bcrypt
 WeasyPrint
 Werkzeug
 Jinja2
 pillow
+
 openpyxl
 requests
 google-auth
